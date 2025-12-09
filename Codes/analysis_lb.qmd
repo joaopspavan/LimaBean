@@ -551,46 +551,6 @@ for (tr in traits_blup) {
 ```{r}
 library(openxlsx)
 
-wb <- createWorkbook()
-
-for (trait in names(lbjoint)) {
-  
-  # 1) ANOVA
-  if (is.data.frame(lbjoint[[trait]]$anova)) {
-    addWorksheet(wb, paste0(trait, "_anova"))
-    writeData(wb, paste0(trait, "_anova"), lbjoint[[trait]]$anova)
-  }
-  
-  # 2) BLUEs / médias ajustadas (augment)
-  aug <- lbjoint[[trait]]$augment
-  if (!is.null(aug) && is.data.frame(aug)) {
-    addWorksheet(wb, paste0(trait, "_BLUES"))
-    writeData(wb, paste0(trait, "_BLUES"), aug)
-  }
-  
-  # 3) Details (estatísticas extras)
-  det <- lbjoint[[trait]]$details
-  if (!is.null(det)) {
-    # Converter lista para data.frame seguro
-    det_df <- tryCatch(as.data.frame(det), error = function(e) NULL)
-    
-    if (!is.null(det_df)) {
-      addWorksheet(wb, paste0(trait, "_details"))
-      writeData(wb, paste0(trait, "_details"), det_df)
-    }
-  }
-}
-
-saveWorkbook(
-  wb,
-  file = "C:/Users/joaop/Desktop/fava/lbjoint_outputs.xlsx",
-  overwrite = TRUE
-)
-```
-
-```{r}
-library(openxlsx)
-
 # Pasta de saída
 out_dir <- "C:/Users/joaop/Desktop/fava/model2_outputs"
 
@@ -672,11 +632,6 @@ saveWorkbook(wb,
 ```
 
 ```{r}
-geeffects = ge_effects(lbindetj, Env, GEN, resp = everything())
-plot(geeffects)
-```
-
-```{r}
 corr = corr_coef(lbindetj, NDF, NDM, PH, PN, GY, OHSW)
 corrplot = plot(corr) +
   scale_fill_gradientn(
@@ -727,98 +682,6 @@ for (nm in names(gemeans)) {
 
 # Salvar em .xlsx
 saveWorkbook(wb_means, "ge_means.xlsx", overwrite = TRUE)
-```
-
-```{r}
-vars <- lbindetj %>%
-  select(where(is.numeric)) %>%   # retirar colunas numéricas que NÃO são respostas
-  colnames()
-
-# Lista de ambientes
-envs <- unique(lbindetj$Env)
-
-# Lista final dos resultados
-tukey_results <- list()
-
-for(v in vars){
-  cat("\n\n=== Rodando variável:", v, "===\n")
-  
-  tukey_results[[v]] <- map(envs, function(e){
-    
-    df_env <- lbindetj %>% filter(Env == e)
-
-    # Modelo simple ANOVA por ambiente
-    mod <- lm(df_env[[v]] ~ df_env$Genotype + df_env$Block)
-
-    # Tukey para Genotype
-    tk <- tukey_hsd(mod, which = "df_env$Genotype")
-
-    list(
-      Env = e,
-      Variable = v,
-      Tukey = tk
-    )
-  }) |> set_names(envs)
-}
-```
-
-```{r}
-tukey_results$GY$Piracicaba$Tukey
-```
-
-```{r}
-library(dplyr)
-library(agricolae)
-library(purrr)
-
-traits <- c(
-  "NDF","NDM","PH","PL","PW","PT",
-  "SL","SW","ST","PN","GY","OHSW")
-
-run_anova_tukey <- function(data, t1) {
-  
-  cat("\n============================================\n")
-  cat("ANALYZING TRAIT:", t1, "\n")
-  cat("============================================\n")
-  
-  envs <- unique(data$Env)
-  results <- list()
-  
-  for (e in envs) {
-    
-    cat("\n----- Environment:", e, "-----\n")
-    
-    # Filter environment
-    df_env <- data %>% filter(Env == e)
-    
-    # ANOVA
-    mod <- aov(df_env[[t1]] ~ Genotype, data = df_env)
-    an <- summary(mod)
-    print(an)
-    
-    # p-value
-    pval <- an[[1]]$`Pr(>F)`[1]
-    
-    if (pval < 0.05) {
-      cat("→ Significant Genotype effect (p < 0.05). Running Tukey...\n")
-      
-      tuk <- HSD.test(mod, "Genotype", group = TRUE)
-      print(tuk$groups)
-      
-      results[[paste0(t1, "_", e)]] <- tuk$groups
-      
-    } else {
-      cat("→ Not significant. Tukey not applied.\n")
-      
-      results[[paste0(t1, "_", e)]] <- NULL
-    }
-  }
-  
-  return(results)
-}
-
-all_results <- lapply(traits, function(v) run_anova_tukey(lbindetj, t1 = v))
-names(all_results) <- traits
 ```
 
 ```{r}
@@ -876,29 +739,6 @@ winners_ranked <- winners2 %>%
 ```
 
 ```{r}
-ggplot(winners_ranked, aes(Genotype, Rank, fill = Rank)) +
-  geom_col() +
-  scale_y_reverse() +  # 1 = topo
-  scale_fill_viridis_c(direction = -1) +
-  facet_wrap(~Trait, scales = "free_y") +
-  theme_bw(base_size = 14) +
-  labs(title = "Ranking of Genotypes per Trait",
-       y = "Ranking (1 = Best)") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-```{r}
-top5 <- winners_ranked %>%
-  filter(Rank <= 5)
-
-ggplot(top5, aes(Rank, Genotype, color = Trait)) +
-  geom_point(size = 4) +
-  facet_wrap(~Trait, scales = "free_y") +
-  theme_bw(base_size = 14) +
-  labs(title = "Top 5 Genotypes per Trait (Across Environments)")
-```
-
-```{r}
 gtb1 = gtb(lbindetj, GEN, resp = c(NDF, NDM, PH, PL, PW, 
              PN, GY, OHSW))
 
@@ -943,50 +783,4 @@ for(trait in names(aovj)){
 }
 
 saveWorkbook(wb, "anovajoin_limabean.xlsx", overwrite = TRUE)
-```
-
-```{r}
-gcormatrix = 
-  tribble(
-  ~NDF, ~NDM, ~PH, ~PL, ~PW, ~PT, ~SL, ~SW, ~ST, ~PN, ~GY, ~OHSW,
-1, 1.082196764, 1.904462219, 1.958756158, 1.096834954, 0.596522684, 0.688338702, 0.60201591, 1.137264161, 0.058125602, 0.35933372, 0.756427151,
-1.082196764, 1, 2.524498053, 2.804113654, 1.527589089, 0.543545253, 1.231182122, 1.030067359, 1.405148452, -0.581025294, -0.330069478, 1.280340508,
-1.904462219, 2.524498053, 1, 3.142862688, 1.940355284, 0.483469775, 1.315300086, 0.990733011, 1.404611973, -1.381942679, 0.038958782, 1.450927149,
-1.958756158, 2.804113654, 3.142862688, 1, 1.097409072, -0.020662118, 0.623754804, 0.143362478, 1.142978985, 0.284952996, 0.806286349, 0.903133917,
-1.096834954, 1.527589089, 1.940355284, 1.097409072, 1, 0.467198658, 0.750049904, 0.6140841, 0.791715644, -0.525736861, -0.097127923, 0.881041714,
-0.596522684, 0.543545253, 0.483469775, -0.020662118, 0.467198658, 1, 0.067039291, -0.204637952, 0.788953254, 0.14144793, 0.264966433, 0.290687621,
-0.688338702, 1.231182122, 1.315300086, 0.623754804, 0.750049904, 0.067039291, 1, 0.841445874, 0.499735644, -0.602852647, -0.353148743, 0.957311203,
-0.60201591, 1.030067359, 0.990733011, 0.143362478, 0.6140841, -0.204637952, 0.841445874, 1, 0.20873433, -0.530360894, -0.317000629, 0.825958308,
-1.137264161, 1.405148452, 1.404611973, 1.142978985, 0.791715644, 0.788953254, 0.499735644, 0.20873433, 1, -0.604700475, 0.052663355, 0.692031363,
-0.058125602, -0.581025294, -1.381942679, 0.284952996, -0.525736861, 0.14144793, -0.602852647, -0.530360894, -0.604700475, 1, 1.044227977, -0.526791071,
-0.35933372, -0.330069478, 0.038958782, 0.806286349, -0.097127923, 0.264966433, -0.353148743, -0.317000629, 0.052663355, 1.044227977, 1, -0.023799045,
-0.756427151, 1.280340508, 1.450927149, 0.903133917, 0.881041714, 0.290687621, 0.957311203, 0.825958308, 0.692031363, -0.526791071, -0.023799045, 1
-)
-corrmatrix = as.matrix(gcormatrix)
-rownames(corrmatrix) = colnames(corrmatrix)
-library(tidyverse)
-
-corrlong = as.data.frame(corrmatrix) %>%
-  rownames_to_column("Var1") %>%
-  pivot_longer(-Var1, names_to = "Var2", values_to = "value")
-
-corrgplot2 = ggplot(corrlong, aes(x=Var1, y= Var2, fill = value)) +
-  geom_tile(color = "white") + 
-  geom_text(aes(label = round(value,2)), size = 3) + 
-  scale_fill_gradient2(
-    low = "orange",
-    mid = "white",
-    high = "purple",
-    midpoint = 0
-  ) + 
-  coord_fixed() + 
-  theme_minimal(base_size = 14) + 
-  theme(
-    axis.text.x = element_text(angle = 0, hjust = 1),
-    panel.grid = element_blank()
-  ) + 
-  labs(
-    title = "Genetic Correlation Matrix",
-    x = "", y = "", fill = "Correlation"
-  )
 ```
