@@ -1,0 +1,450 @@
+---
+title: "Lima Bean GxE"
+format: html
+editor: visual
+---
+
+```{r}
+library(reshape2)
+library(ggplot2)
+library(openxlsx)
+library(asreml)
+library(dplyr)
+library(tibble)
+library(ggplot2)
+library(metan)
+library(writexl)
+```
+
+## Data
+
+-   3 Locations (Brazil) - Piracicaba - SP, Teresina - PI, Tianguá - CE,
+
+-   40 Lima Bean Lines
+
+-   Randomized Complete Block Design (RCBD) - 3 Repetitions
+
+-   Plot usable area: 5m²
+
+-   Traits:
+
+    |          Trait           | Acronym | Unit  |
+    |:------------------------:|:-------:|:-----:|
+    |       Grain Yield        |   GY    | kg/ha |
+    | Number days to flowering |   NDF   | days  |
+    | Number days to maturity  |   NDM   | days  |
+    | One Hundred Seed Weight  |  OHSW   |   g   |
+    |       Plant Height       |   PH    |  cm   |
+    |        Pod Length        |   PL    |  mm   |
+    |        Pod Number        |   PN    |  mm   |
+    |      Pod Thickness       |   PT    |  mm   |
+    |        Pod Width         |   PW    |  mm   |
+    |       Seed Length        |   SL    |  mm   |
+    |      Seed Thickness      |   ST    |  mm   |
+    |        Seed Width        |   SW    |  mm   |
+
+```{r}
+LB = read.xlsx("C://Users//joaop//Desktop//fava//LimaBean.xlsx")
+LB$Block    <- as.factor(LB$Block)
+LB$Env    <- as.factor(LB$Env)
+LB$Genotype <- as.factor(LB$Genotype)
+LB$GEN<- as.factor(LB$GEN)
+str(LB)
+```
+
+## anova
+
+```{r}
+aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
+```
+
+## Mixed-effect models
+
+```{r}
+mixedmodel <- gamem_met(LB,env = Env, gen = GEN, rep = Block,random = "all",resp = everything())
+```
+
+#### LRT
+
+```{r}
+GYLRT = mixedmodel$GY$LRT
+OHSWLRT = mixedmodel$OHSW$LRT 
+NDFLRT = mixedmodel$NDF$LRT
+NDMLRT = mixedmodel$NDM$LRT 
+PHLRT = mixedmodel$PH$LRT
+PNLRT = mixedmodel$PN$LRT
+LRT = list(
+  GY_LRT   = GYLRT,
+  OHSW_LRT = OHSWLRT,
+  NDF_LRT  = NDFLRT,
+  NDM_LRT  = NDMLRT,
+  PH_LRT   = PHLRT,
+  PN_LRT   = PNLRT
+)
+LRT
+write_xlsx(LRT, "LRT_LB.xlsx")
+```
+
+#### BLUPs
+
+```{r}
+BLUPgen = list(
+  GY_BLUP   = mixedmodel$GY$BLUPgen,
+  OHSW_BLUP = mixedmodel$OHSW$BLUPgen,
+  NDF_BLUP  = mixedmodel$NDF$BLUPgen,
+  NDM_BLUP  = mixedmodel$NDM$BLUPgen,
+  PH_BLUP   = mixedmodel$PH$BLUPgen,
+  PN_BLUP   = mixedmodel$PN$BLUPgen
+)
+write_xlsx(BLUPgen, "BLUPgen_LB.xlsx")
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+plot_trait_bar <- function(x, trait_name, size.tex.lab = 12) {
+  
+  df <- x[[trait_name]]$BLUPgen %>%
+    mutate(
+      Status = ifelse(Predicted < mean(Predicted, na.rm = TRUE), "Below", "Above")
+    )
+  
+  df$Status <- factor(df$Status, levels = c("Below", "Above"))
+  
+  df <- df %>%
+    arrange(Predicted) %>%
+    mutate(GEN = factor(GEN, levels = GEN))
+  
+  ggplot(df, aes(x = GEN, y = Predicted, fill = Status)) +
+    geom_col(color = "white", alpha = 0.4) +
+    scale_fill_manual(values = c("Above" = "purple","Below" = "orange")) +
+    coord_flip() +
+    labs(
+      x = "Ranking Genotypes",
+      y = paste(trait_name)
+    ) +
+    theme_classic(base_size = 12) +
+    theme(
+      axis.text.y = element_text(size = 12),
+      legend.position = "right"
+    )
+}
+traits <- c("GY", "OHSW", "PH", "PN", "NDF", "NDM")
+BLUP_bar_plots <- lapply(traits, function(trait) plot_trait_bar(mixedmodel, trait))
+```
+
+```{r}
+library(ggpubr)
+blups_panel3 = ggarrange(BLUP_bar_plots[[1]], BLUP_bar_plots[[2]], BLUP_bar_plots[[3]], BLUP_bar_plots[[4]], BLUP_bar_plots[[5]], BLUP_bar_plots[[6]], ncol = 3, nrow = 2, common.legend = T, legend = "bottom", labels = c("A", "B", "C", "D", "E", "F"), font.label = list(size = 10, face = "bold"))
+blups_panel3
+ggsave("BLUPs_LB.pdf",blups_panel3,width = 12, height = 14, dpi = 600)
+```
+
+#### Correlation
+
+```{r}
+corr = corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW)
+corrplot = plot(corr) +
+  scale_fill_gradientn(
+    colours = c("orange", "white", "purple"),
+    limits = c(-1, 1)
+  )
+corrplot
+ggsave("Correlation.pdf",corrplot, width = 4, height = 4, dpi = 600)
+```
+
+#### Genotype by trait biplot
+
+```{r}
+gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PL, PW, 
+             PN, GY, OHSW))
+
+gtb1plot = plot(gtb1,
+     col.env = "orange",
+            col.gen = "purple",
+            size.text.gen = 5,
+            size.text.env = 8, repel = T,
+            repulsion = 1,
+            col.line = "orange",
+            plot_theme = theme_metan_minimal())
+ggsave("Genotypebytraitbiplot_LB.pdf",gtb1plot, width = 8, height = 8, dpi = 600)
+```
+
+##### Correlation + GYT
+
+```{r}
+lbplotcorrgyt = ggarrange(corrplot,gtb1plot, ncol = 2, nrow = 1, labels = c("A","B"), font.label = list(size = 10, face = "bold"))
+lbplotcorrgyt
+ggsave("Correlation_GYT_LB.pdf",lbplotcorrgyt,width = 12, height = 6, dpi = 600)
+```
+
+#### Which-won-Where
+
+```{r}
+dir.create("Which_won_where", showWarnings = FALSE)
+
+# Loop por trait
+for(tr in traits){
+  
+  # Calcular GGE para o trait
+  gge3_tr <- gge(
+    LB,
+    Env,
+    GEN,
+    resp = tr,
+    svp = "symmetrical"
+  )
+  
+  # Plot type 3 (Which-won-where)
+  p <- plot(gge3_tr,
+            type = 3,
+            col.env = "orange",
+            col.gen = "purple",
+            arrow.color = "purple",
+            size.text.gen = 2,
+            size.text.env = 5,
+            size.shape.win = 4,
+            large_label = 6,
+            repel = TRUE,
+            size.text.win = 4.5,
+            repulsion = 2,
+            col.line = "orange",
+            plot_theme = theme_metan_minimal())
+    ggsave(
+    filename = paste0("Which_won_where/", tr, "_WhichWonWhere.pdf"),
+    plot = p,
+    width = 10,
+    height = 8,
+    dpi = 600
+    )}
+p
+```
+
+```{r}
+# Plot type 3 (Which-won-where)
+www <- list()
+
+for(tr in traits){
+  gge3_tr <- gge(LB, Env, GEN, resp = tr, svp = "symmetrical")
+  
+  p <- plot(gge3_tr, type = 3,
+            col.env = "orange",
+            col.gen = "purple",
+            arrow.color = "purple",
+            size.text.gen = 1,
+            size.text.env = 5,
+            size.shape.win = 5,
+            large_label = 1,
+            repel = T,
+            size.text.win = 5,
+            repulsion = 0.5,
+            col.line = "orange",
+            plot_theme = theme_metan_minimal())
+  
+  www[[tr]] <- p + ggtitle(NULL) + labs(subtitle = NULL)}
+
+www_lb = ggarrange(www[["GY"]], www[["OHSW"]], www[["PN"]],
+                   www[["PH"]], www[["NDF"]], www[["NDM"]],
+                   ncol = 3, nrow = 2,
+                   common.legend = T, legend = "bottom", 
+                   labels = c("A", "B", "C", "D", "E", "F"), 
+                   font.label = list(size = 10, face = "bold"))
+www_lb <- annotate_figure(
+  www_lb,
+  top = text_grob(
+    "Which-Won-Where",
+    face = "bold",
+    size = 16
+  )
+)
+www_lb
+```
+
+```{r}
+library(ggpubr)
+library(ggplot2)
+
+www <- list()
+
+for(tr in traits){
+  gge3_tr <- gge(LB, Env, GEN, resp = tr, svp = "symmetrical")
+  
+  p <- plot(gge3_tr, type = 3,
+            col.env = "orange",
+            col.gen = "purple",
+            arrow.color = "purple",
+            size.text.gen = 1,
+            size.text.env = 4,
+            size.shape.win = 4,
+            large_label = 1,
+            repel = TRUE,
+            size.text.win = 4,
+            repulsion = 0.5,
+            col.line = "orange",
+            plot_theme = theme_metan_minimal())
+  
+  p_try <- try({
+    p2 <- p + labs(title = tr, subtitle = NULL) +
+            theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    p <- p2
+    NULL
+  }, silent = TRUE)
+  
+  if(inherits(p_try, "try-error") || !inherits(p, "ggplot")) {
+    p_grob <- ggpubr::as_ggplot(p)            
+    p <- p_grob + labs(title = tr, subtitle = NULL) +
+              theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  }
+  
+  www[[tr]] <- p
+}
+
+www_lb <- ggarrange(
+  www[["GY"]],  www[["OHSW"]], www[["PN"]],
+  www[["PH"]],  www[["NDF"]],  www[["NDM"]],
+  ncol = 3, nrow = 2,
+  common.legend = TRUE, legend = "bottom",
+  labels = c("A","B","C","D","E","F"),
+  font.label = list(size = 10, face = "bold")
+)
+
+www_lb <- annotate_figure(
+  www_lb,
+  top = text_grob("Which-Won-Where", face = "bold", size = 16)
+)
+
+print(www_lb)
+ggsave("Which-won-Where.pdf", www_lb, width = 10, height = 8, dpi = 600)
+```
+
+#### Mean_performance vs. stability 
+
+```{r}
+dir.create("Mean_performance_vs_stability", showWarnings = FALSE)
+
+mps_list <- list()
+
+for(tr in traits){
+    gge2_tr <- gge(
+    LB,
+    Env,
+    GEN,
+    resp = tr,
+    svp = "genotype"
+  )
+  
+  # Plot type 2
+  p <- plot(gge2_tr,
+            type = 2,
+            col.env = "orange",
+            col.gen = "purple",
+            size.text.gen = 2,
+            size.text.env = 4,
+            repel = TRUE,
+            repulsion = 2,
+            col.line = "orange",
+            plot_theme = theme_bw())
+  
+  p_try <- try({
+    p2 <- p + labs(title = tr, subtitle = NULL) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    p <- p2
+    NULL
+  }, silent = TRUE)
+  
+  if(inherits(p_try, "try-error") || !inherits(p, "ggplot")) {
+    p_grob <- ggpubr::as_ggplot(p)
+    p <- p_grob + labs(title = tr, subtitle = NULL) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  }
+  
+  mps_list[[tr]] <- p2}
+
+mps_panel <- ggarrange(
+  mps_list[["GY"]],  mps_list[["OHSW"]], mps_list[["PN"]],
+  mps_list[["PH"]],  mps_list[["NDF"]],  mps_list[["NDM"]],
+  ncol = 3, nrow = 2,
+  common.legend = TRUE, legend = "bottom",
+  labels = c("A","B","C","D","E","F"),
+  font.label = list(size = 10, face = "bold")
+)
+
+mps_panel <- annotate_figure(
+  mps_panel,
+  top = text_grob("Mean Performance vs Stability", face = "bold", size = 16)
+)
+
+mps_panel
+ggsave("Mean Performance vs Stability_LB.pdf", mps_panel, width = 10, height = 8, dpi = 600)
+```
+
+#### Discriminativeness vs. representativeness
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+
+library(ggplot2)
+library(ggpubr)
+
+dir.create("Discriminativeness_vs_Representativeness", showWarnings = FALSE)
+
+dr_list <- list()
+
+for(tr in traits){
+
+  gge4_tr <- gge(
+    LB,
+    Env,
+    GEN,
+    resp = tr,
+    centering = "environment",
+    scaling = "none",
+    svp = "environment"
+  )
+  p4 <- plot(gge4_tr,
+             type = 4,
+             col.env = "orange",
+             col.gen = "purple",
+             size.text.gen = 2,
+             size.text.env = 4 ,
+             repel = TRUE,
+             repulsion = 2,
+             col.line = "orange",
+             size.line = 0.5,
+             col.circle = "black",
+             plot_theme = theme_metan_minimal())
+  p_try <- try({
+    p4_mod <- p4 +
+      labs(title = tr, subtitle = NULL) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    p4 <- p4_mod
+    NULL
+  }, silent = TRUE)
+  if(inherits(p_try, "try-error") || !inherits(p4, "ggplot")) {
+    p_grob <- ggpubr::as_ggplot(p4)
+    p4 <- p_grob +
+      labs(title = tr, subtitle = NULL) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  }
+  dr_list[[tr]] <- p4
+}
+dr_panel <- ggarrange(
+  dr_list[["GY"]],  dr_list[["OHSW"]], dr_list[["PN"]],
+  dr_list[["PH"]],  dr_list[["NDF"]],  dr_list[["NDM"]],
+  ncol = 3, nrow = 2,
+  common.legend = TRUE, legend = "bottom",
+  labels = c("A","B","C","D","E","F"),
+  font.label = list(size = 10, face = "bold")
+)
+
+dr_panel <- annotate_figure(
+  dr_panel,
+  top = text_grob("Discriminativeness vs Representativeness", 
+                  face = "bold", size = 16)
+)
+
+dr_panel
+ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 10, height = 8, dpi = 600)
+```
