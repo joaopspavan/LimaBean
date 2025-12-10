@@ -5,7 +5,6 @@ editor: visual
 ---
 
 ```{r}
-library(SpATS)
 library(reshape2)
 library(ggplot2)
 library(openxlsx)
@@ -643,6 +642,47 @@ corrplot
 
 ```{r}
 ggsave("Correlation.pdf",corrplot, width = 4, height = 6, dpi = 600)
+```
+
+```{r}
+{r}
+library(dplyr)
+
+blups_gen <- predict %>%
+  group_by(GEN) %>%
+  summarise(
+    NDF = mean(NDF),
+    NDM = mean(NDM),
+    PH  = mean(PH),
+    PN  = mean(PN),
+    GY  = mean(GY),
+    OHSW = mean(OHSW)
+  )
+gen_cor <- cor(blups_gen[, -1])
+cor_long <- melt(gen_cor)
+names(cor_long) <- c("Var1", "Var2", "Correlation")
+corplotg = ggplot(cor_long, aes(Var1, Var2, fill = Correlation)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%.2f", Correlation)), size = 4) +
+  scale_fill_gradient2(
+    low = "orange",   
+    mid = "white",
+    high = "purple",   
+    midpoint = 0,
+    limits = c(-1, 1),
+    name = "Genetic Correlation"
+  ) +
+  labs(
+    title = "Genotype-Based Genetic Correlation Matrix",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
+  )
+ggsave("corplotg.pdf", corplotg, width = 8, height = 10, dpi = 600)
 ```
 
 ```{r}
