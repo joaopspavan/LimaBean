@@ -222,46 +222,6 @@ p
 ```
 
 ```{r}
-# Plot type 3 (Which-won-where)
-www <- list()
-
-for(tr in traits){
-  gge3_tr <- gge(LB, Env, GEN, resp = tr, svp = "symmetrical")
-  
-  p <- plot(gge3_tr, type = 3,
-            col.env = "orange",
-            col.gen = "purple",
-            arrow.color = "purple",
-            size.text.gen = 1,
-            size.text.env = 5,
-            size.shape.win = 5,
-            large_label = 1,
-            repel = T,
-            size.text.win = 5,
-            repulsion = 0.5,
-            col.line = "orange",
-            plot_theme = theme_metan_minimal())
-  
-  www[[tr]] <- p + ggtitle(NULL) + labs(subtitle = NULL)}
-
-www_lb = ggarrange(www[["GY"]], www[["OHSW"]], www[["PN"]],
-                   www[["PH"]], www[["NDF"]], www[["NDM"]],
-                   ncol = 3, nrow = 2,
-                   common.legend = T, legend = "bottom", 
-                   labels = c("A", "B", "C", "D", "E", "F"), 
-                   font.label = list(size = 10, face = "bold"))
-www_lb <- annotate_figure(
-  www_lb,
-  top = text_grob(
-    "Which-Won-Where",
-    face = "bold",
-    size = 16
-  )
-)
-www_lb
-```
-
-```{r}
 library(ggpubr)
 library(ggplot2)
 
@@ -308,12 +268,6 @@ www_lb <- ggarrange(
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold")
 )
-
-www_lb <- annotate_figure(
-  www_lb,
-  top = text_grob("Which-Won-Where", face = "bold", size = 16)
-)
-
 print(www_lb)
 ggsave("Which-won-Where.pdf", www_lb, width = 10, height = 8, dpi = 600)
 ```
@@ -368,11 +322,6 @@ mps_panel <- ggarrange(
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold")
-)
-
-mps_panel <- annotate_figure(
-  mps_panel,
-  top = text_grob("Mean Performance vs Stability", face = "bold", size = 16)
 )
 
 mps_panel
@@ -437,12 +386,6 @@ dr_panel <- ggarrange(
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold")
-)
-
-dr_panel <- annotate_figure(
-  dr_panel,
-  top = text_grob("Discriminativeness vs Representativeness", 
-                  face = "bold", size = 16)
 )
 
 dr_panel
