@@ -16,7 +16,7 @@ library(metan)
 library(writexl)
 ```
 
-## Data
+## Lima Bean Data
 
 -   3 Locations (Brazil) - Piracicaba - SP, Teresina - PI, Tianguá - CE,
 
@@ -50,6 +50,21 @@ LB$Env    <- as.factor(LB$Env)
 LB$Genotype <- as.factor(LB$Genotype)
 LB$GEN<- as.factor(LB$GEN)
 str(LB)
+```
+
+```{r}
+hist(LB$NDF)
+hist(LB$NDM)
+hist(LB$PH)
+hist(LB$PL)
+hist(LB$PW)
+hist(LB$PT)
+hist(LB$SL)
+hist(LB$SW)
+hist(LB$ST)
+hist(LB$PN)
+hist(LB$GY)
+hist(LB$OHSW)
 ```
 
 ## anova
@@ -100,6 +115,26 @@ write_xlsx(BLUPgen, "BLUPgen_LB.xlsx")
 ```
 
 ```{r}
+library(dplyr)
+library(tibble)
+
+ebvMat <- data.frame(
+  GEN = mixedmodel$GY$BLUPgen$GEN,
+  GY   = mixedmodel$GY$BLUPgen$Predicted,
+  OHSW = mixedmodel$OHSW$BLUPgen$Predicted,
+  NDF  = mixedmodel$NDF$BLUPgen$Predicted,
+  NDM  = mixedmodel$NDM$BLUPgen$Predicted,
+  PH   = mixedmodel$PH$BLUPgen$Predicted,
+  PN   = mixedmodel$PN$BLUPgen$Predicted
+) |>
+  column_to_rownames("GEN") |>
+  as.matrix()
+
+dim(ebvMat)
+head(ebvMat)
+```
+
+```{r}
 library(ggplot2)
 library(dplyr)
 
@@ -144,6 +179,7 @@ ggsave("BLUPs_LB.pdf",blups_panel3,width = 12, height = 14, dpi = 600)
 #### Correlation
 
 ```{r}
+library(ggpubr)
 corr = corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW)
 corrplot = plot(corr) +
   scale_fill_gradientn(
@@ -151,7 +187,34 @@ corrplot = plot(corr) +
     limits = c(-1, 1)
   )
 corrplot
-ggsave("Correlation.pdf",corrplot, width = 4, height = 4, dpi = 600)
+#ggsave("Correlation.pdf",corrplot, width = 4, height = 4, dpi = 600)
+```
+
+```{r}
+corrplot = plot(
+  corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW),
+  type = "upper",
+  diag = FALSE,
+  reorder = T,
+  signif = c("stars", "pval"),
+  show = c("all", "signif"),
+  p_val = 0.05,
+  caption = TRUE,
+  digits.cor = 2,
+  digits.pval = 3,
+  col.low = "orange",
+  col.mid = "white",
+  col.high = "purple",
+  lab.x.position = "top",
+  lab.y.position = "left",   
+  legend.position = "right",
+  legend.title = "Pearson's\nCorrelation",
+  size.text.cor = 5,
+  size.text.signif = 5,
+  size.text.lab = 14
+)
+corrplot
+ggsave("Correlation.pdf",corrplot, width = 7, height = 6, dpi = 600)
 ```
 
 #### Genotype by trait biplot
@@ -263,16 +326,25 @@ for(tr in traits){
 www_lb <- ggarrange(
   www[["GY"]],  www[["OHSW"]], www[["PN"]],
   www[["PH"]],  www[["NDF"]],  www[["NDM"]],
-  ncol = 3, nrow = 2,
+  ncol = 2, nrow = 3,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
-  font.label = list(size = 10, face = "bold")
+  font.label = list(size = 10, face = "bold"),
+  align = "hv",
+  hjust = -0.5,
+  vjust = 1.5
 )
-print(www_lb)
-ggsave("Which-won-Where.pdf", www_lb, width = 10, height = 8, dpi = 600)
+
+www_lb <- annotate_figure(
+  www_lb,
+  top = text_grob("", size = 14),
+  fig.lab = "",
+  fig.lab.pos = "bottom"
+)
+ggsave("Which-won-Where.pdf", www_lb, width = 10, height = 14, dpi = 600)
 ```
 
-#### Mean_performance vs. stability 
+#### Mean_performance vs. stability
 
 ```{r}
 dir.create("Mean_performance_vs_stability", showWarnings = FALSE)
@@ -318,22 +390,25 @@ for(tr in traits){
 mps_panel <- ggarrange(
   mps_list[["GY"]],  mps_list[["OHSW"]], mps_list[["PN"]],
   mps_list[["PH"]],  mps_list[["NDF"]],  mps_list[["NDM"]],
-  ncol = 3, nrow = 2,
+  ncol = 2, nrow = 3,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
-  font.label = list(size = 10, face = "bold")
+  font.label = list(size = 10, face = "bold"),
+  align = "hv"
 )
 
-mps_panel
-ggsave("Mean Performance vs Stability_LB.pdf", mps_panel, width = 10, height = 8, dpi = 600)
+mps_panel = annotate_figure(
+  mps_panel,
+  top = text_grob("", size = 14),
+  fig.lab = "",
+  fig.lab.pos = "bottom"
+)
+ggsave("Mean Performance vs Stability_LB.pdf", mps_panel, width = 10, height = 14, dpi = 600)
 ```
 
 #### Discriminativeness vs. representativeness
 
 ```{r}
-library(ggplot2)
-library(ggpubr)
-
 library(ggplot2)
 library(ggpubr)
 
@@ -356,7 +431,7 @@ for(tr in traits){
              type = 4,
              col.env = "orange",
              col.gen = "purple",
-             size.text.gen = 2,
+             size.text.gen = 4,
              size.text.env = 4 ,
              repel = TRUE,
              repulsion = 2,
@@ -382,12 +457,191 @@ for(tr in traits){
 dr_panel <- ggarrange(
   dr_list[["GY"]],  dr_list[["OHSW"]], dr_list[["PN"]],
   dr_list[["PH"]],  dr_list[["NDF"]],  dr_list[["NDM"]],
-  ncol = 3, nrow = 2,
+  ncol = 2, nrow = 3,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
-  font.label = list(size = 10, face = "bold")
+  font.label = list(size = 10, face = "bold"), 
+  align = "hv",
+  hjust = -0.5,
+  vjust = 1.5
+  
 )
 
-dr_panel
-ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 10, height = 8, dpi = 600)
+dr_panel = annotate_figure(
+  dr_panel,
+  top = text_grob("", size = 14),
+  fig.lab = "",
+  fig.lab.pos = "bottom"
+)
+ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 10, height = 14, dpi = 600)
+```
+
+## Desire index
+
+```{r}
+# DESIRE INDEX FUNCTION
+
+gainDiff <- function(ebvMat, b_ebv, dGain, nSel){ 
+  
+  take <- order(ebvMat %*% b_ebv, decreasing = TRUE)[1:nSel]
+  
+  mu_Sel <- colMeans(ebvMat[take, ])
+  resp   <- mu_Sel - colMeans(ebvMat)
+  resp   <- resp / sqrt(sum(resp^2))
+  
+  sum((resp - dGain)^2)
+}
+```
+
+```{r}
+ebvMat <- ebvMat[complete.cases(ebvMat), ]
+#COV MATRIX -EBVS
+library(AlphaSimR)
+
+G_ebv <- AlphaSimR::popVar(ebvMat)
+G_ebv
+```
+
+```{r}
+#desired gains
+desiredGain <- c(
+  GY   =  2,
+  OHSW =  0,
+  NDF  = -1,
+  NDM  = -1,
+  PH   =  0,
+  PN   =  1
+)
+desiredGain <- desiredGain / sqrt(sum(desiredGain^2))
+sum(desiredGain^2)
+```
+
+```{r}
+b_ebv <- solve(G_ebv) %*% desiredGain
+b_ebv
+```
+
+```{r}
+nSel <- 5
+opt <- optim(
+  par     = b_ebv,
+  fn      = gainDiff,
+  ebvMat  = ebvMat,
+  dGain   = desiredGain,
+  nSel    = nSel
+)
+opt_weights <- opt$par
+opt_weights
+```
+
+```{r}
+DesireIndex <- ebvMat %*% opt_weights
+
+DesireIndex <- data.frame(
+  GEN = rownames(ebvMat),
+  DesireIndex = as.numeric(DesireIndex)
+) |>
+  arrange(desc(DesireIndex))
+
+head(DesireIndex, 10)
+write.xlsx(DesireIndex, "Desireindex.xlsx")
+```
+
+```{r}
+selected <- DesireIndex[1:5, ]
+selected
+```
+
+```{r}
+sel_mat <- ebvMat[selected$GEN, ]
+
+expResp <- colMeans(sel_mat) - colMeans(ebvMat)
+scaleExpResp <- expResp / sqrt(sum(expResp^2))
+
+cbind(
+  Desired  = desiredGain,
+  Achieved = scaleExpResp
+)
+```
+
+```{r}
+ggplot(df_vec, aes(x = Desired, y = Achieved)) +
+  geom_point(size = 3, color = "purple") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_text(aes(label = Trait), nudge_x = 0.05, size = 5, color = "orange") +
+  coord_equal(xlim = c(-1,1), ylim = c(-1,1)) +
+  labs(
+    x = "Desired Gain",
+    y = "Achieved Gain"
+  ) +
+  theme_classic(base_size = 14)
+
+```
+
+```{r}
+library(dplyr)
+
+df <- dplyr::arrange(DesireIndex, dplyr::desc(DesireIndex)) |>
+  dplyr::mutate(
+    GEN = factor(GEN, levels = GEN),
+    Selected = ifelse(GEN %in% selected$GEN, "Selected", "Not selected")
+  )
+```
+
+```{r}
+ggplot(df, aes(x = "", y = DesireIndex, fill = Selected)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  scale_fill_manual(
+    values = c("Selected" = "#6A1B9A", "Not selected" = "grey80")
+  ) +
+  labs(
+    title = "DESIRE Index — Selected genotypes"
+  ) +
+  theme_void()
+
+```
+
+```{r}
+ggplot(df, aes(x = 2, y = DesireIndex, fill = Selected)) +
+  geom_col(color = "white") +
+  coord_polar(theta = "y") +
+  xlim(0.5, 2.5) +
+  scale_fill_manual(
+    values = c("Selected" = "#6A1B9A", "Not selected" = "grey85")
+  ) +
+  labs(
+    title = "DESIRE Index — Selected genotypes"
+  ) +
+  theme_void()
+
+```
+
+```{r}
+library(ggplot2)
+
+desiredgainplot = ggplot(df, aes(x = GEN, y = DesireIndex, fill = Selected)) +
+  geom_col(width = 0.9, color = "black", size = 0.2) + 
+  coord_polar() +
+  scale_fill_manual(
+    values = c(
+      "Selected"     = "#6A1B9A",
+      "Not selected" = "orange"
+    )
+  ) +
+  labs(face = "bold",
+    fill  = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(face = "bold"),
+    axis.title = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+desiredgainplot
+ggsave("desiredgainplot_LB.pdf", plot = desiredgainplot,width = 10, height = 8,dpi = 600)
 ```
