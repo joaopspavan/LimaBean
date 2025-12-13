@@ -645,3 +645,63 @@ desiredgainplot = ggplot(df, aes(x = GEN, y = DesireIndex, fill = Selected)) +
 desiredgainplot
 ggsave("desiredgainplot_LB.pdf", plot = desiredgainplot,width = 10, height = 8,dpi = 600)
 ```
+
+```{r}
+h2_df <- gmd(mixedmodel, "h2")
+h2 <- h2_df$h2
+names(h2) <- h2_df$VAR
+traits_DI <- colnames(ebvMat)
+h2_DI <- h2[traits_DI]
+h2_DI
+library(dplyr)
+
+genetic_gain_table <- function(ebvMat, selected_gen, h2){
+
+  traits <- colnames(ebvMat)
+
+  res <- lapply(traits, function(tr){
+
+    Xo <- mean(ebvMat[, tr], na.rm = TRUE)
+    Xs <- mean(ebvMat[selected_gen, tr], na.rm = TRUE)
+
+    SD  <- Xs - Xo
+    SDp <- (SD / Xo) * 100
+
+    SG  <- SD * h2[tr]
+    SGp <- (SG / Xo) * 100
+
+    tibble(
+      Trait    = tr,
+      Xo       = round(Xo, 2),
+      Xs       = round(Xs, 2),
+      SD       = round(SD, 2),
+      `SD (%)` = round(SDp, 2),
+      SG       = round(SG, 2),
+      `SG (%)` = round(SGp, 2)
+    )
+  })
+
+  bind_rows(res)
+}
+Table3_DesireIndex <- genetic_gain_table(
+  ebvMat = ebvMat,
+  selected_gen = selected$GEN,
+  h2 = h2_DI
+)
+
+Table3_DesireIndex
+
+```
+
+```{r}
+library(knitr)
+
+kable(
+  Table3_DesireIndex,
+  caption = "Predicted genetic gain applying the Desire Index based on genotypic BLUPs."
+)
+```
+
+```{r}
+write.xlsx(Table3_DesireIndex, "Table3_DesireIndex.xlsx", rowNames = FALSE)
+```
