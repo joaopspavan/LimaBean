@@ -176,6 +176,69 @@ blups_panel3
 ggsave("BLUPs_LB.pdf",blups_panel3,width = 12, height = 14, dpi = 600)
 ```
 
+```{r}
+trait_units <- c(
+  GY   = "kg/ha",   # kg·ha⁻¹
+  OHSW = "g",
+  PH   = "cm",
+  PN   = "number",
+  NDF  = "number",
+  NDM  = "number"
+)
+plot_trait_heatmap <- function(x, trait_name) {
+  
+  gen_order <- sprintf("L%02d", 1:40)
+  
+  df <- x[[trait_name]]$BLUPgen %>%
+    filter(GEN %in% gen_order) %>%
+    mutate(
+      GEN = factor(GEN, levels = gen_order),
+      Trait = trait_name
+    )
+  
+  ggplot(df, aes(x = GEN, y = Trait, fill = Predicted)) +
+    geom_tile() +
+    scale_fill_gradientn(
+      colours = c("orange", "#E37383", "purple"),
+      name = bquote(hat(y)~"("~.(trait_units[[trait_name]])~")")
+    ) +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+      axis.text.y = element_text(angle = 90, face = "bold"),
+      legend.position = "right",
+      panel.grid = element_blank()
+    )
+}
+traits <- c("GY", "OHSW", "PH", "PN", "NDF", "NDM")
+
+BLUP_heatmaps <- lapply(traits, function(trait) {
+  plot_trait_heatmap(mixedmodel, trait)
+})
+BLUP_heatmaps
+```
+
+```{r}
+blups_heatmap_panel <- ggarrange(
+  plotlist = BLUP_heatmaps,
+  ncol = 2, nrow = 3,
+  labels = c("A", "B", "C", "D", "E", "F"), font.label = list(size = 10, face = "bold"),
+  align = "v"
+)
+blups_heatmap_panel
+```
+
+```{r}
+ggsave(
+  "BLUPs_LB.pdf",
+  blups_heatmap_panel,
+  width = 14,
+  height = 12,
+  dpi = 600
+)
+```
+
 #### Correlation
 
 ```{r}
@@ -575,7 +638,6 @@ ggplot(df_vec, aes(x = Desired, y = Achieved)) +
     y = "Achieved Gain"
   ) +
   theme_classic(base_size = 14)
-
 ```
 
 ```{r}
@@ -586,35 +648,6 @@ df <- dplyr::arrange(DesireIndex, dplyr::desc(DesireIndex)) |>
     GEN = factor(GEN, levels = GEN),
     Selected = ifelse(GEN %in% selected$GEN, "Selected", "Not selected")
   )
-```
-
-```{r}
-ggplot(df, aes(x = "", y = DesireIndex, fill = Selected)) +
-  geom_col(width = 1, color = "white") +
-  coord_polar(theta = "y") +
-  scale_fill_manual(
-    values = c("Selected" = "#6A1B9A", "Not selected" = "grey80")
-  ) +
-  labs(
-    title = "DESIRE Index — Selected genotypes"
-  ) +
-  theme_void()
-
-```
-
-```{r}
-ggplot(df, aes(x = 2, y = DesireIndex, fill = Selected)) +
-  geom_col(color = "white") +
-  coord_polar(theta = "y") +
-  xlim(0.5, 2.5) +
-  scale_fill_manual(
-    values = c("Selected" = "#6A1B9A", "Not selected" = "grey85")
-  ) +
-  labs(
-    title = "DESIRE Index — Selected genotypes"
-  ) +
-  theme_void()
-
 ```
 
 ```{r}
@@ -690,13 +723,12 @@ Table3_DesireIndex <- genetic_gain_table(
 )
 
 Table3_DesireIndex
-
 ```
 
 ```{r}
 library(knitr)
 
-kable(
+tableDesire =kable(
   Table3_DesireIndex,
   caption = "Predicted genetic gain applying the Desire Index based on genotypic BLUPs."
 )
@@ -704,4 +736,36 @@ kable(
 
 ```{r}
 write.xlsx(Table3_DesireIndex, "Table3_DesireIndex.xlsx", rowNames = FALSE)
+```
+
+```{r}
+gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PL, PW, 
+             PN, GY, OHSW))
+
+gtb1plot = plot(gtb1,
+     col.env = "orange",
+            col.gen = "purple",
+            size.text.gen = 5,
+            size.text.env = 8, repel = T,
+            repulsion = 2,
+            col.line = "orange",
+            plot_theme = theme_metan())
+gtb1plot
+```
+
+```{r}
+gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
+  ncol = 2,
+  common.legend = F, legend = "bottom",
+  labels = c("A","B"),
+  font.label = list(size = 10, face = "bold"), 
+  align = "hv",
+  hjust = -0.5,
+  vjust = 1.5
+  
+)
+```
+
+```{r}
+ggsave("gt_desired_panel_LB.pdf", plot = gt_desired_panel, width = 12, height = 6,dpi = 600)
 ```
