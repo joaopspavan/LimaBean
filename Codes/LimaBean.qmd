@@ -761,10 +761,7 @@ gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
   align = "hv",
   hjust = -0.5,
   vjust = 1.5
-  
 )
-```
 
-```{r}
 ggsave("gt_desired_panel_LB.pdf", plot = gt_desired_panel, width = 12, height = 6,dpi = 600)
 ```
