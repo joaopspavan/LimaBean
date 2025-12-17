@@ -739,8 +739,7 @@ write.xlsx(Table3_DesireIndex, "Table3_DesireIndex.xlsx", rowNames = FALSE)
 ```
 
 ```{r}
-gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PL, PW, 
-             PN, GY, OHSW))
+gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PN, GY, OHSW))
 
 gtb1plot = plot(gtb1,
      col.env = "orange",
