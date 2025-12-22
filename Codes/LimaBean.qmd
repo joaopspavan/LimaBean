@@ -1,5 +1,7 @@
 ---
-title: "Lima Bean GxE"
+title: "Leveraging GxE Interaction to Optimize Multi-Trait Selection in Lima Bean"
+date: "`r Sys.Date()`"
+author: "João Paulo Silva Pavan"
 format: html
 editor: visual
 ---
@@ -569,7 +571,7 @@ G_ebv
 #desired gains
 desiredGain <- c(
   GY   =  2,
-  OHSW =  0,
+  OHSW =  1,
   NDF  = -1,
   NDM  = -1,
   PH   =  0,
@@ -621,7 +623,7 @@ sel_mat <- ebvMat[selected$GEN, ]
 expResp <- colMeans(sel_mat) - colMeans(ebvMat)
 scaleExpResp <- expResp / sqrt(sum(expResp^2))
 
-cbind(
+df_vect = cbind(
   Desired  = desiredGain,
   Achieved = scaleExpResp
 )
@@ -685,7 +687,6 @@ h2 <- h2_df$h2
 names(h2) <- h2_df$VAR
 traits_DI <- colnames(ebvMat)
 h2_DI <- h2[traits_DI]
-h2_DI
 library(dplyr)
 
 genetic_gain_table <- function(ebvMat, selected_gen, h2){
@@ -705,6 +706,7 @@ genetic_gain_table <- function(ebvMat, selected_gen, h2){
 
     tibble(
       Trait    = tr,
+      `h²` = round(h2[tr], 2),
       Xo       = round(Xo, 2),
       Xs       = round(Xs, 2),
       SD       = round(SD, 2),
@@ -764,4 +766,106 @@ gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
 )
 
 ggsave("gt_desired_panel_LB.pdf", plot = gt_desired_panel, width = 12, height = 6,dpi = 600)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggridges)
+trait_names <- c(
+  GY_BLUP   = "Grain Yield (GY)",
+  OHSW_BLUP = "One Hundred Seed Weight (OHSW)",
+  NDF_BLUP  = "Days to Flowering (NDF)",
+  NDM_BLUP  = "Days to Maturity (NDM)",
+  PH_BLUP   = "Plant Height (PH)",
+  PN_BLUP   = "Pod Number (PN)"
+)
+df_long <- bind_rows(
+  lapply(names(BLUPgen), function(tr) {
+    BLUPgen[[tr]] %>%
+      mutate(
+        Trait  = trait_names[tr],
+        Status = ifelse(GEN %in% selected$GEN,
+                        "Selected", "Not Selected")
+      ) %>%
+      select(GEN, Trait, Status, Predicted)
+  })
+)
+df_long$Trait <- factor(
+  df_long$Trait,
+  levels = rev(trait_names)
+)
+```
+
+```{r}
+plot_density_SG <- function(data_trait, selected, xlab) {
+  
+  df <- data_trait %>%
+    mutate(
+      Status = factor(
+        ifelse(GEN %in% selected$GEN, "Selected", "Not Selected"),
+        levels = c("Not Selected", "Selected")
+      )
+    )
+  
+  ggplot(df, aes(x = Predicted, fill = Status)) +
+    geom_density(alpha = 0.6, color = "black", linewidth = 0.4) +
+    
+    scale_fill_manual(
+      values = c("Not Selected" = "#FFE5B4",
+                 "Selected"     = "#BFB4FF")
+    ) +
+    
+    labs(
+      x = xlab,   # nome do trait + unidade
+      y = "Density",
+      fill = NULL
+    ) +
+    
+    theme_light(base_size = 12) +
+    theme(
+      axis.title.x = element_text(face = "bold"),
+      axis.title.y = element_text(face = "bold"),
+      legend.position = "bottom"
+    )
+}
+
+library(patchwork)
+
+pd1 <- plot_density_SG(BLUPgen$GY_BLUP, selected,
+                      expression(bold("GY (kg ha"^{-1}*")")))
+
+pd2 <- plot_density_SG(BLUPgen$OHSW_BLUP, selected,
+                      expression(bold("OHSW (g)")))
+
+pd3 <- plot_density_SG(BLUPgen$NDF_BLUP, selected,
+                      expression(bold("NDF (days)")))
+
+pd4 <- plot_density_SG(BLUPgen$NDM_BLUP, selected,
+                      expression(bold("NDM (days)")))
+
+pd5 <- plot_density_SG(BLUPgen$PH_BLUP, selected,
+                      expression(bold("PH (cm)")))
+
+pd6 <- plot_density_SG(BLUPgen$PN_BLUP, selected,
+                      expression(bold("Pod Number")))
+densplot = (pd1 | pd2) /
+(pd3 | pd4) /
+(pd5 | pd6) +
+  plot_annotation(
+    tag_levels = "A",
+    theme = theme(
+      plot.tag = element_text(
+        face = "bold",
+        size = 14
+      )
+    )
+  ) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggsave(plot = densplot, "densplot.pdf", width = 14, height = 12, dpi = 600)
 ```
