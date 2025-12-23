@@ -4,6 +4,8 @@ date: "`r Sys.Date()`"
 author: "João Paulo Silva Pavan"
 format: html
 editor: visual
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r}
@@ -652,6 +654,8 @@ df <- dplyr::arrange(DesireIndex, dplyr::desc(DesireIndex)) |>
   )
 ```
 
+
+
 ```{r}
 library(ggplot2)
 
@@ -798,9 +802,27 @@ df_long$Trait <- factor(
 )
 ```
 
+### Density plot
 ```{r}
+BLUPgen=readxl::read_xlsx("BLUPgen_LB.xlsx",)
+str(BLUPgen)
+all_sheets <- readxl::excel_sheets("BLUPgen_LB.xlsx")
+BLUPgen <- purrr::map(purrr::set_names(all_sheets),
+                   readxl::read_excel,
+                   path = "BLUPgen_LB.xlsx")
+
+
+DesireIndex <- readxl::read_xlsx("Desireindex.xlsx")
+
+selected <- DesireIndex[1:5, ]
+selected
+```
+
+```{r}
+
 plot_density_SG <- function(data_trait, selected, xlab) {
-  
+  require(dplyr)
+  require(ggplot2)
   df <- data_trait %>%
     mutate(
       Status = factor(
@@ -834,7 +856,7 @@ plot_density_SG <- function(data_trait, selected, xlab) {
 library(patchwork)
 
 pd1 <- plot_density_SG(BLUPgen$GY_BLUP, selected,
-                      expression(bold("GY (kg ha"^{-1}*")")))
+                      expression(bold("GY (kg ha"^{-1}*")")))+    geom_density(alpha = 0.6, color = "black", linewidth = 0.4,adjust=10);pd1 
 
 pd2 <- plot_density_SG(BLUPgen$OHSW_BLUP, selected,
                       expression(bold("OHSW (g)")))
