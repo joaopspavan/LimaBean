@@ -571,7 +571,7 @@ G_ebv
 #desired gains
 desiredGain <- c(
   GY   =  2,
-  OHSW =  1,
+  OHSW =  0,
   NDF  = -1,
   NDM  = -1,
   PH   =  0,
@@ -769,6 +769,7 @@ ggsave("gt_desired_panel_LB.pdf", plot = gt_desired_panel, width = 12, height = 
 ```
 
 ```{r}
+if ("package:plyr" %in% search()) detach("package:plyr", unload = TRUE)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -784,7 +785,7 @@ trait_names <- c(
 df_long <- bind_rows(
   lapply(names(BLUPgen), function(tr) {
     BLUPgen[[tr]] %>%
-      mutate(
+      dplyr::mutate(
         Trait  = trait_names[tr],
         Status = ifelse(GEN %in% selected$GEN,
                         "Selected", "Not Selected")
@@ -799,10 +800,10 @@ df_long$Trait <- factor(
 ```
 
 ```{r}
-plot_density_SG <- function(data_trait, selected, xlab) {
+plot_density_SG <- function(data_trait, selected, xlab, bw = NULL) {
   
   df <- data_trait %>%
-    mutate(
+    dplyr::mutate(
       Status = factor(
         ifelse(GEN %in% selected$GEN, "Selected", "Not Selected"),
         levels = c("Not Selected", "Selected")
@@ -810,7 +811,7 @@ plot_density_SG <- function(data_trait, selected, xlab) {
     )
   
   ggplot(df, aes(x = Predicted, fill = Status)) +
-    geom_density(alpha = 0.6, color = "black", linewidth = 0.4) +
+    geom_density(alpha = 0.6, color = "black", linewidth = 0.4, bw = bw) +
     
     scale_fill_manual(
       values = c("Not Selected" = "#FFE5B4",
@@ -834,25 +835,24 @@ plot_density_SG <- function(data_trait, selected, xlab) {
 library(patchwork)
 
 pd1 <- plot_density_SG(BLUPgen$GY_BLUP, selected,
-                      expression(bold("GY (kg ha"^{-1}*")")))
+                      expression(bold("GY (kg ha"^{-1}*")")), bw = 100)
 
 pd2 <- plot_density_SG(BLUPgen$OHSW_BLUP, selected,
-                      expression(bold("OHSW (g)")))
+                      expression(bold("OHSW (g)")), bw = 2.5)
 
 pd3 <- plot_density_SG(BLUPgen$NDF_BLUP, selected,
-                      expression(bold("NDF (days)")))
+                      expression(bold("NDF (days)")), bw = 3)
 
 pd4 <- plot_density_SG(BLUPgen$NDM_BLUP, selected,
-                      expression(bold("NDM (days)")))
+                      expression(bold("NDM (days)")), bw = 3.5)
 
 pd5 <- plot_density_SG(BLUPgen$PH_BLUP, selected,
-                      expression(bold("PH (cm)")))
+                      expression(bold("PH (cm)")), bw = 0.5)
 
 pd6 <- plot_density_SG(BLUPgen$PN_BLUP, selected,
-                      expression(bold("Pod Number")))
-densplot = (pd1 | pd2) /
-(pd3 | pd4) /
-(pd5 | pd6) +
+                      expression(bold("Pod Number")), bw = 65)
+densplot = (pd1 | pd2 | pd3) /
+(pd4 | pd5 | pd6) +
   plot_annotation(
     tag_levels = "A",
     theme = theme(
@@ -864,8 +864,9 @@ densplot = (pd1 | pd2) /
   ) +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
+densplot
 ```
 
 ```{r}
-ggsave(plot = densplot, "densplot.pdf", width = 14, height = 12, dpi = 600)
+ggsave(plot = densplot, "densplot.pdf", width = 12, height = 10, dpi = 600)
 ```
