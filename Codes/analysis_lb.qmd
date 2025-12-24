@@ -18,11 +18,12 @@ library(agricolae)
 
 ```{r}
 lbindetj = read.xlsx("C://Users//joaop//Desktop//fava//lbjoint.xlsx")
-lbindetj$Block    <- as.factor(lbindetj$Block)
-lbindetj$Env    <- as.factor(lbindetj$Env)
-lbindetj$Genotype <- as.factor(lbindetj$Genotype)
-lbindetj$GEN<- as.factor(lbindetj$GEN)
-str(lbindetj)
+LB = read.xlsx("C://Users//joaop//Desktop//fava//LimaBean.xlsx")
+LB$Block    <- as.factor(LB$Block)
+LB$Env    <- as.factor(LB$Env)
+LB$Genotype <- as.factor(LB$Genotype)
+LB$GEN<- as.factor(LB$GEN)
+str(LB)
 ```
 
 ```{r}
@@ -31,7 +32,7 @@ Traitsj = c("NDF", "NDM", "PH", "PL", "PW", "PT",
 ```
 
 ```{r}
-aovj = anova_joint(lbindetj,
+aovj = anova_joint(LB,
                       env = Env,
                       gen = Genotype,
                       rep = Block,
@@ -43,7 +44,7 @@ aov1 = get_model_data(aovj, "details")
 ```
 
 ```{r}
-model2 <- gamem_met(lbindetj,
+mixedmodel <- gamem_met(LB,
                    env = Env,
                     gen = GEN,
                     rep = Block,
@@ -52,38 +53,38 @@ model2 <- gamem_met(lbindetj,
 ```
 
 ```{r}
-plot(model2, type = "re")
+plot(mixedmodel, type = "re")
 ```
 
 ```{r}
-genpar = get_model_data(model2, "genpar")
+genpar = get_model_data(mixedmodel, "genpar")
 ```
 
 ```{r}
-lrt = get_model_data(model2, "lrt")
+lrt = get_model_data(mixedmodel, "lrt")
 ```
 
 ```{r}
-ranef = get_model_data(model2, "ranef")
+ranef = get_model_data(mixedmodel, "ranef")
 ```
 
 ```{r}
-predict = predict(model2)
+predict = predict(mixedmodel)
 ```
 
 ```{r}
-vcomp = get_model_data(model2, "vcomp")
-h2= gmd(model2, "h2")
-gcor = gmd(model2, "gcor")
-pcor = gmd(model2, "pcor")
-details = gmd(model2, "details")
+vcomp = get_model_data(mixedmodel, "vcomp")
+h2= gmd(mixedmodel, "h2")
+gcor = gmd(mixedmodel, "gcor")
+pcor = gmd(mixedmodel, "pcor")
+details = gmd(mixedmodel, "details")
 ```
 
 ```{r}
 #basic biplot
 gge = 
   gge(
-  lbindetj,
+  LB,
   Env,
   GEN,
   resp = c(NDF, NDM, PH, PL, PW, 
@@ -110,7 +111,7 @@ traits <- c("NDF","NDM","PH","PL","PW","PN","GY","OHSW")
 gge_list <- lapply(traits, function(tr){
   
   gge_obj <- gge(
-    lbindetj,
+    LB,
     Env,
     GEN,
     resp = tr,
@@ -156,7 +157,7 @@ for(tr in names(gge_list)){
 #Biplot type 2: Mean performance vs. stability
 gge2 = 
   gge(
-  lbindetj,
+  LB,
   Env,
   GEN,
   resp = c(NDF, NDM, PH, PL, PW, 
@@ -193,7 +194,7 @@ for(tr in traits){
   
   # Calcular GGE para o trait
   gge2_tr <- gge(
-    lbindetj,
+    LB,
     Env,
     GEN,
     resp = tr,
@@ -226,7 +227,7 @@ for(tr in traits){
 #Biplot type 3: Which-won-where
 gge3 = 
   gge(
-  lbindetj,
+  LB,
   Env,
   GEN,
   resp = c(NDF, NDM, PH, PL, PW, 
@@ -255,7 +256,7 @@ for(tr in traits){
   
   # Calcular GGE para o trait
   gge3_tr <- gge(
-    lbindetj,
+    LB,
     Env,
     GEN,
     resp = tr,
@@ -290,7 +291,7 @@ for(tr in traits){
 #Biplot type 4: Discriminativeness vs. representativeness
 gge4 = 
   gge(
-  lbindetj,
+  LB,
   Env,
   GEN,
   resp = c(NDF, NDM, PH, PL, PW, 
@@ -316,7 +317,7 @@ dir.create("Discriminativeness_vs_Representativeness", showWarnings = FALSE)
 
 for(tr in traits){
     gge4_tr <- gge(
-    lbindetj,
+    LB,
     Env,
     GEN,
     resp = tr,
@@ -349,7 +350,7 @@ for(tr in traits){
 #Biplot type 6: Ranking environments
 gge6 = 
   gge(
-  lbindetj,
+  LB,
   Env,
   GEN,
   resp = c(NDF, NDM, PH, PL, PW, 
@@ -377,7 +378,7 @@ for(tr in traits){
   
   # Criar gge usando apenas 1 trait por vez
   gge6_tr <- gge(
-    lbindetj,
+    LB,
     Env,
     GEN,
     resp = tr,
@@ -407,7 +408,7 @@ for(tr in traits){
 #Biplot type 8: Ranking genotypes
 gge8 = 
   gge(
-  lbindetj,
+  LB,
   Env,
   GEN,
   resp = c(NDF, NDM, PH, PL, PW, 
@@ -435,7 +436,7 @@ for(tr in traits){
   
   # Criar gge para 1 trait por vez
   gge8_tr <- gge(
-    lbindetj,
+    LB,
     Env,
     GEN,
     resp = tr,
@@ -464,7 +465,7 @@ for(tr in traits){
 #Biplot type 10: Relationship among environments
 gge10 = 
   gge(
-  lbindetj,
+  LB,
   Env,
   GEN,
   resp = c(NDF, NDM, PH, PL, PW, 
@@ -490,7 +491,7 @@ dir.create("Relationship_Among_Environments_Type10", showWarnings = FALSE)
 
 for(tr in traits){
     gge10_tr <- gge(
-    lbindetj,
+    LB,
     Env,
     GEN,
     resp = tr,
@@ -517,7 +518,7 @@ for(tr in traits){
 ```
 
 ```{r}
-blup = plot_blup(model2,
+blup = plot_blup(mixedmodel,
                prob = 0.2,
                col.shape = c("purple", "orange"),
                invert = TRUE)
@@ -526,12 +527,12 @@ ggsave("blups.pdf",blup, width = 12, height = 10, dpi = 600)
 ```
 
 ```{r}
-traits_blup <- names(model2)
+traits_blup <- names(mixedmodel)
 dir.create("BLUPs_All_Traits", showWarnings = FALSE)
 for (tr in traits_blup) {
   
   blup_plot <- plot_blup(
-    model2,
+    mixedmodel,
     trait = tr,
     prob = 0.2,
     col.shape = c("purple", "orange"),
@@ -551,7 +552,7 @@ for (tr in traits_blup) {
 library(openxlsx)
 
 # Pasta de saída
-out_dir <- "C:/Users/joaop/Desktop/fava/model2_outputs"
+out_dir <- "C:/Users/joaop/Desktop/fava/mixedmodel_outputs"
 
 # Criar a pasta se não existir
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
@@ -565,12 +566,12 @@ safe_df <- function(x) {
 }
 
 # Loop por trait
-for (trait in names(model2)) {
+for (trait in names(mixedmodel)) {
   
   wb <- createWorkbook()
   
   # Recuperar todos os componentes
-  contents <- model2[[trait]]
+  contents <- mixedmodel[[trait]]
   
   for (component in names(contents)) {
     x <- contents[[component]]
@@ -590,7 +591,7 @@ for (trait in names(model2)) {
   }
   
   # Nome do arquivo final
-  file_name <- paste0(out_dir, "/", trait, "_model2.xlsx")
+  file_name <- paste0(out_dir, "/", trait, "_mixedmodel.xlsx")
   
   saveWorkbook(wb, file = file_name, overwrite = TRUE)
 }
@@ -615,7 +616,7 @@ listas <- list(
   CorrG = gcor,
   CorrP = pcor,
   Details = details, 
-  BLUPS = predict
+  Predict = predict
 )
 
 # Para cada objeto: cria aba e grava
@@ -631,7 +632,7 @@ saveWorkbook(wb,
 ```
 
 ```{r}
-corr = corr_coef(lbindetj, NDF, NDM, PH, PN, GY, OHSW)
+corr = corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW)
 corrplot = plot(corr) +
   scale_fill_gradientn(
     colours = c("orange", "white", "purple"),
@@ -645,7 +646,6 @@ ggsave("Correlation.pdf",corrplot, width = 4, height = 6, dpi = 600)
 ```
 
 ```{r}
-{r}
 library(dplyr)
 
 blups_gen <- predict %>%
@@ -686,19 +686,19 @@ ggsave("corplotg.pdf", corplotg, width = 8, height = 10, dpi = 600)
 ```
 
 ```{r}
-winners = ge_winners(lbindetj, Env, GEN, c(NDF, NDM, NDF, NDM, PH, PL, PW, 
+winners = ge_winners(LB, Env, GEN, c(NDF, NDM, NDF, NDM, PH, PL, PW, 
              PN, GY, OHSW))
 winners
 ```
 
 ```{r}
-winners2 = ge_winners(lbindetj, Env, GEN, c(NDF, NDM, PH, PL, PW, 
+winners2 = ge_winners(LB, Env, GEN, c(NDF, NDM, PH, PL, PW, 
              PN, GY, OHSW), type = "ranks")
 winners2
 ```
 
 ```{r}
-gemeans = ge_means(lbindetj, Env, GEN, resp = c(NDF, NDM, PH, PL, PW, 
+gemeans = ge_means(LB, Env, GEN, resp = c(NDF, NDM, PH, PL, PW, 
              PN, GY, OHSW))
 gemeans
 ```
@@ -779,7 +779,7 @@ winners_ranked <- winners2 %>%
 ```
 
 ```{r}
-gtb1 = gtb(lbindetj, GEN, resp = c(NDF, NDM, PH, PL, PW, 
+gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PL, PW, 
              PN, GY, OHSW))
 
 gtb1plot = plot(gtb1,
@@ -823,4 +823,8 @@ for(trait in names(aovj)){
 }
 
 saveWorkbook(wb, "anovajoin_limabean.xlsx", overwrite = TRUE)
+```
+
+```{r}
+lrttable = read.xlsx("C://Users//joaop//Documents//GitHub//LimaBean//Data//LRT_LB_Table.xlsx")
 ```
