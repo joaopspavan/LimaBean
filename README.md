@@ -64,4 +64,3 @@ Have questions, want to collaborate, or found a bug?
 Feel free to contact:
 
 joaosilvapavan@usp.br   
-jbaldin@usp.br
