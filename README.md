@@ -13,7 +13,7 @@ Reproducible analysis pipeline for evaluating **genotype-by-environment interact
 **Gérson N. C. Ferreira¹†**, **João P. S. Pavan¹†**, **Mauricio S. Araújo¹**, **Dayana R. Sousa¹**, **Michelle S. Nascimento²**, **Vanessa G. Moura²**, **José T. Chagas¹**, **Yasmin I. Retore¹**, **Josieli L. Silva²**, **Maria S. S. Silva²**, **Regina L. F. Gomes²**, **Ângela C. A. Lopes²**, **Maria I. Zucchi³˒⁴**, **José B. Pinheiro¹\***
 
 † These authors contributed equally to this work.  
-\* Corresponding author: **pinheirojb@usp.br**
+
 
 ### Affiliations
 
