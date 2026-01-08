@@ -26,9 +26,7 @@ Reproducible analysis pipeline for evaluating **genotype-by-environment interact
 
 ## Abstract
 
-Lima bean stands out for its wide adaptation to diverse edaphoclimatic conditions and is a promising crop for low-input farming systems. However, trait expression is strongly influenced by genotype-by-environment interaction (G×E), complicating the selection of broadly adapted and stable genotypes.
-
-This study evaluated G×E interaction in **40 lima bean breeding lines** across **three Brazilian agro-ecological environments**. Trials were conducted in a **randomized complete block design** with **three replications**. The significance of effects was tested using **likelihood-ratio tests**, and G×E was investigated with the **GGE biplot**. Simultaneous multi-trait selection was performed using the **Genotype-by-Trait (GT) biplot** and a **desired-gain index**.
+Lima bean stands out for its wide adaptation to diverse edaphoclimatic conditions and is a promising crop for low-input farming systems. However, trait expression is strongly influenced by genotype-by-environment interaction (G×E), complicating the selection of broadly adapted and stable genotypes. This study evaluated G×E interaction in **40 lima bean breeding lines** across **three Brazilian agro-ecological environments**. Trials were conducted in a **randomized complete block design** with **three replications**. The significance of effects was tested using **likelihood-ratio tests**, and G×E was investigated with the **GGE biplot**. Simultaneous multi-trait selection was performed using the **Genotype-by-Trait (GT) biplot** and a **desired-gain index**.
 
 ### Key findings
 
