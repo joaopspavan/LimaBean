@@ -99,6 +99,9 @@ LRT = list(
   PN_LRT   = PNLRT
 )
 LRT
+```
+
+```{r}
 write_xlsx(LRT, "LRT_LB.xlsx")
 ```
 
@@ -113,6 +116,9 @@ BLUPgen = list(
   PH_BLUP   = mixedmodel$PH$BLUPgen,
   PN_BLUP   = mixedmodel$PN$BLUPgen
 )
+```
+
+```{r}
 write_xlsx(BLUPgen, "BLUPgen_LB.xlsx")
 ```
 
@@ -131,51 +137,8 @@ ebvMat <- data.frame(
 ) |>
   column_to_rownames("GEN") |>
   as.matrix()
-
 dim(ebvMat)
 head(ebvMat)
-```
-
-```{r}
-library(ggplot2)
-library(dplyr)
-
-plot_trait_bar <- function(x, trait_name, size.tex.lab = 12) {
-  
-  df <- x[[trait_name]]$BLUPgen %>%
-    mutate(
-      Status = ifelse(Predicted < mean(Predicted, na.rm = TRUE), "Below", "Above")
-    )
-  
-  df$Status <- factor(df$Status, levels = c("Below", "Above"))
-  
-  df <- df %>%
-    arrange(Predicted) %>%
-    mutate(GEN = factor(GEN, levels = GEN))
-  
-  ggplot(df, aes(x = GEN, y = Predicted, fill = Status)) +
-    geom_col(color = "white", alpha = 0.4) +
-    scale_fill_manual(values = c("Above" = "purple","Below" = "orange")) +
-    coord_flip() +
-    labs(
-      x = "Ranking Genotypes",
-      y = paste(trait_name)
-    ) +
-    theme_classic(base_size = 12) +
-    theme(
-      axis.text.y = element_text(size = 12),
-      legend.position = "right"
-    )
-}
-traits <- c("GY", "OHSW", "PH", "PN", "NDF", "NDM")
-BLUP_bar_plots <- lapply(traits, function(trait) plot_trait_bar(mixedmodel, trait))
-```
-
-```{r}
-library(ggpubr)
-blups_panel3 = ggarrange(BLUP_bar_plots[[1]], BLUP_bar_plots[[2]], BLUP_bar_plots[[3]], BLUP_bar_plots[[4]], BLUP_bar_plots[[5]], BLUP_bar_plots[[6]], ncol = 3, nrow = 2, common.legend = T, legend = "bottom", labels = c("A", "B", "C", "D", "E", "F"), font.label = list(size = 10, face = "bold"))
-blups_panel3
-ggsave("BLUPs_LB.pdf",blups_panel3,width = 12, height = 14, dpi = 600)
 ```
 
 ```{r}
@@ -218,7 +181,6 @@ traits <- c("GY", "OHSW", "PH", "PN", "NDF", "NDM")
 BLUP_heatmaps <- lapply(traits, function(trait) {
   plot_trait_heatmap(mixedmodel, trait)
 })
-BLUP_heatmaps
 ```
 
 ```{r}
@@ -244,18 +206,6 @@ ggsave(
 #### Correlation
 
 ```{r}
-library(ggpubr)
-corr = corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW)
-corrplot = plot(corr) +
-  scale_fill_gradientn(
-    colours = c("orange", "white", "purple"),
-    limits = c(-1, 1)
-  )
-corrplot
-#ggsave("Correlation.pdf",corrplot, width = 4, height = 4, dpi = 600)
-```
-
-```{r}
 corrplot = plot(
   corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW),
   type = "upper",
@@ -279,6 +229,9 @@ corrplot = plot(
   size.text.lab = 14
 )
 corrplot
+```
+
+```{r}
 ggsave("Correlation.pdf",corrplot, width = 7, height = 6, dpi = 600)
 ```
 
@@ -296,58 +249,13 @@ gtb1plot = plot(gtb1,
             repulsion = 1,
             col.line = "orange",
             plot_theme = theme_metan_minimal())
+```
+
+```{r}
 ggsave("Genotypebytraitbiplot_LB.pdf",gtb1plot, width = 8, height = 8, dpi = 600)
 ```
 
-##### Correlation + GYT
-
-```{r}
-lbplotcorrgyt = ggarrange(corrplot,gtb1plot, ncol = 2, nrow = 1, labels = c("A","B"), font.label = list(size = 10, face = "bold"))
-lbplotcorrgyt
-ggsave("Correlation_GYT_LB.pdf",lbplotcorrgyt,width = 12, height = 6, dpi = 600)
-```
-
 #### Which-won-Where
-
-```{r}
-dir.create("Which_won_where", showWarnings = FALSE)
-
-# Loop por trait
-for(tr in traits){
-  
-  # Calcular GGE para o trait
-  gge3_tr <- gge(
-    LB,
-    Env,
-    GEN,
-    resp = tr,
-    svp = "symmetrical"
-  )
-  
-  # Plot type 3 (Which-won-where)
-  p <- plot(gge3_tr,
-            type = 3,
-            col.env = "orange",
-            col.gen = "purple",
-            arrow.color = "purple",
-            size.text.gen = 2,
-            size.text.env = 5,
-            size.shape.win = 4,
-            large_label = 6,
-            repel = TRUE,
-            size.text.win = 4.5,
-            repulsion = 2,
-            col.line = "orange",
-            plot_theme = theme_metan_minimal())
-    ggsave(
-    filename = paste0("Which_won_where/", tr, "_WhichWonWhere.pdf"),
-    plot = p,
-    width = 10,
-    height = 8,
-    dpi = 600
-    )}
-p
-```
 
 ```{r}
 library(ggpubr)
@@ -391,7 +299,7 @@ for(tr in traits){
 www_lb <- ggarrange(
   www[["GY"]],  www[["OHSW"]], www[["PN"]],
   www[["PH"]],  www[["NDF"]],  www[["NDM"]],
-  ncol = 2, nrow = 3,
+  ncol = 3, nrow = 2,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold"),
@@ -406,6 +314,10 @@ www_lb <- annotate_figure(
   fig.lab = "",
   fig.lab.pos = "bottom"
 )
+www_lb
+```
+
+```{r}
 ggsave("Which-won-Where.pdf", www_lb, width = 10, height = 14, dpi = 600)
 ```
 
@@ -455,7 +367,7 @@ for(tr in traits){
 mps_panel <- ggarrange(
   mps_list[["GY"]],  mps_list[["OHSW"]], mps_list[["PN"]],
   mps_list[["PH"]],  mps_list[["NDF"]],  mps_list[["NDM"]],
-  ncol = 2, nrow = 3,
+  ncol = 3, nrow = 2,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold"),
@@ -468,6 +380,10 @@ mps_panel = annotate_figure(
   fig.lab = "",
   fig.lab.pos = "bottom"
 )
+mps_panel
+```
+
+```{r}
 ggsave("Mean Performance vs Stability_LB.pdf", mps_panel, width = 10, height = 14, dpi = 600)
 ```
 
@@ -522,7 +438,7 @@ for(tr in traits){
 dr_panel <- ggarrange(
   dr_list[["GY"]],  dr_list[["OHSW"]], dr_list[["PN"]],
   dr_list[["PH"]],  dr_list[["NDF"]],  dr_list[["NDM"]],
-  ncol = 2, nrow = 3,
+  ncol = 3, nrow = 2,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold"), 
@@ -538,6 +454,10 @@ dr_panel = annotate_figure(
   fig.lab = "",
   fig.lab.pos = "bottom"
 )
+dr_panel
+```
+
+```{r}
 ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 10, height = 14, dpi = 600)
 ```
 
@@ -545,7 +465,6 @@ ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 10, 
 
 ```{r}
 # DESIRE INDEX FUNCTION
-
 gainDiff <- function(ebvMat, b_ebv, dGain, nSel){ 
   
   take <- order(ebvMat %*% b_ebv, decreasing = TRUE)[1:nSel]
@@ -609,6 +528,9 @@ DesireIndex <- data.frame(
   arrange(desc(DesireIndex))
 
 head(DesireIndex, 10)
+```
+
+```{r}
 write.xlsx(DesireIndex, "Desireindex.xlsx")
 ```
 
@@ -644,7 +566,6 @@ ggplot(df_vec, aes(x = Desired, y = Achieved)) +
 
 ```{r}
 library(dplyr)
-
 df <- dplyr::arrange(DesireIndex, dplyr::desc(DesireIndex)) |>
   dplyr::mutate(
     GEN = factor(GEN, levels = GEN),
@@ -677,9 +598,13 @@ desiredgainplot = ggplot(df, aes(x = GEN, y = DesireIndex, fill = Selected)) +
     plot.title = element_text(face = "bold", hjust = 0.5),
     legend.position = "bottom"
   )
-desiredgainplot
+```
+
+```{r}
 ggsave("desiredgainplot_LB.pdf", plot = desiredgainplot,width = 10, height = 8,dpi = 600)
 ```
+
+### Table Selection Gain
 
 ```{r}
 h2_df <- gmd(mixedmodel, "h2")
@@ -740,7 +665,21 @@ tableDesire =kable(
 write.xlsx(Table3_DesireIndex, "Table3_DesireIndex.xlsx", rowNames = FALSE)
 ```
 
+## Genotype by trait biplot
+
 ```{r}
+gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PN, GY, OHSW))
+
+gtb1plot = plot(gtb1,
+     col.env = "orange",
+            col.gen = "purple",
+            size.text.gen = 5,
+            size.text.env = 8, repel = T,
+            repulsion = 2,
+            col.line = "orange",
+            plot_theme = theme_metan())
+gtb1plot
+
 gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PN, GY, OHSW))
 
 gtb1plot = plot(gtb1,
@@ -754,6 +693,8 @@ gtb1plot = plot(gtb1,
 gtb1plot
 ```
 
+### Panel Desire Gain Index + GYT Biplot
+
 ```{r}
 gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
   ncol = 2,
@@ -764,9 +705,14 @@ gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
   hjust = -0.5,
   vjust = 1.5
 )
+gt_desired_panel
+```
 
+```{r}
 ggsave("gt_desired_panel_LB.pdf", plot = gt_desired_panel, width = 12, height = 6,dpi = 600)
 ```
+
+## Density plot
 
 ```{r}
 if ("package:plyr" %in% search()) detach("package:plyr", unload = TRUE)
