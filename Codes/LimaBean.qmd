@@ -1,12 +1,39 @@
 ---
-title: "Leveraging GxE Interaction to Optimize Multi-Trait Selection in Lima Bean"
+title: "Leveraging G x E Interaction to Optimize Multi-Trait Selection in Lima Bean"
 date: "`r Sys.Date()`"
 author: "João Paulo Silva Pavan"
-format: html
+format:
+  pdf: default
+  gfm: default
+pdf-engine: xelatex
 editor: visual
+execute:
+  message: false
+  warning: false
 ---
 
+## Authors
+
+**Gérson N. C. Ferreira¹†**, **João P. S. Pavan¹†**, **Mauricio S. Araújo¹**, **Dayana R. Sousa¹**,\
+**Michelle S. Nascimento²**, **Vanessa G. Moura²**, **José T. Chagas¹**, **Yasmin I. Retore¹**,\
+**Josieli L. Silva²**, **Maria S. S. Silva²**, **Regina L. F. Gomes²**, **Ângela C. A. Lopes²**,\
+**Maria I. Zucchi³˒⁴**, **José B. Pinheiro¹**
+
+† These authors contributed equally to this work.
+
+### Affiliations
+
+1.  Genetics Diversity and Breeding Laboratory, Department of Genetics, “Luiz de Queiroz” College of Agriculture (ESALQ/USP), Piracicaba, São Paulo, Brazil\
+2.  Department of Plant Science, Federal University of Piauí (UFPI), Teresina, Piauí, Brazil\
+3.  Conservation Genetics and Genomics Group, Department of Genetics, ESALQ/USP, Piracicaba, São Paulo, Brazil\
+4.  Secretariat of Agriculture and Food Supply of São Paulo State, Piracicaba, São Paulo, Brazil
+
+------------------------------------------------------------------------
+
 ```{r}
+#| message: false
+#| warning: false
+library(tinytex)
 library(reshape2)
 library(ggplot2)
 library(openxlsx)
@@ -16,6 +43,7 @@ library(tibble)
 library(ggplot2)
 library(metan)
 library(writexl)
+library(ggpubr)
 ```
 
 ## Lima Bean Data
@@ -72,6 +100,7 @@ hist(LB$OHSW)
 ## anova
 
 ```{r}
+#| eval: false
 aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
 ```
 
@@ -102,6 +131,7 @@ LRT
 ```
 
 ```{r}
+#| eval: false
 write_xlsx(LRT, "LRT_LB.xlsx")
 ```
 
@@ -119,6 +149,7 @@ BLUPgen = list(
 ```
 
 ```{r}
+#| eval: false
 write_xlsx(BLUPgen, "BLUPgen_LB.xlsx")
 ```
 
@@ -184,6 +215,8 @@ BLUP_heatmaps <- lapply(traits, function(trait) {
 ```
 
 ```{r}
+#| fig-width: 14
+#| fig-height: 12
 blups_heatmap_panel <- ggarrange(
   plotlist = BLUP_heatmaps,
   ncol = 2, nrow = 3,
@@ -206,6 +239,8 @@ ggsave(
 #### Correlation
 
 ```{r}
+#| message: false
+#| warning: false
 corrplot = plot(
   corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW),
   type = "upper",
@@ -232,6 +267,7 @@ corrplot
 ```
 
 ```{r}
+#| eval: false
 ggsave("Correlation.pdf",corrplot, width = 7, height = 6, dpi = 600)
 ```
 
@@ -252,12 +288,17 @@ gtb1plot = plot(gtb1,
 ```
 
 ```{r}
+#| eval: false
 ggsave("Genotypebytraitbiplot_LB.pdf",gtb1plot, width = 8, height = 8, dpi = 600)
 ```
 
 #### Which-won-Where
 
 ```{r}
+#| fig-width: 10
+#| fig-height: 14
+#| message: false
+#| warning: false
 library(ggpubr)
 library(ggplot2)
 
@@ -318,12 +359,17 @@ www_lb
 ```
 
 ```{r}
+#| eval: false
 ggsave("Which-won-Where.pdf", www_lb, width = 10, height = 14, dpi = 600)
 ```
 
 #### Mean_performance vs. stability
 
 ```{r}
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 14
 dir.create("Mean_performance_vs_stability", showWarnings = FALSE)
 
 mps_list <- list()
@@ -384,12 +430,17 @@ mps_panel
 ```
 
 ```{r}
+#| eval: false
 ggsave("Mean Performance vs Stability_LB.pdf", mps_panel, width = 10, height = 14, dpi = 600)
 ```
 
 #### Discriminativeness vs. representativeness
 
 ```{r}
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 14
 library(ggplot2)
 library(ggpubr)
 
@@ -458,6 +509,7 @@ dr_panel
 ```
 
 ```{r}
+#| eval: false
 ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 10, height = 14, dpi = 600)
 ```
 
@@ -478,6 +530,8 @@ gainDiff <- function(ebvMat, b_ebv, dGain, nSel){
 ```
 
 ```{r}
+#| message: false
+#| warning: false
 ebvMat <- ebvMat[complete.cases(ebvMat), ]
 #COV MATRIX -EBVS
 library(AlphaSimR)
@@ -531,6 +585,7 @@ head(DesireIndex, 10)
 ```
 
 ```{r}
+#| eval: false
 write.xlsx(DesireIndex, "Desireindex.xlsx")
 ```
 
@@ -552,6 +607,7 @@ df_vect = cbind(
 ```
 
 ```{r}
+#| eval: false
 ggplot(df_vec, aes(x = Desired, y = Achieved)) +
   geom_point(size = 3, color = "purple") +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
@@ -601,6 +657,7 @@ desiredgainplot = ggplot(df, aes(x = GEN, y = DesireIndex, fill = Selected)) +
 ```
 
 ```{r}
+#| eval: false
 ggsave("desiredgainplot_LB.pdf", plot = desiredgainplot,width = 10, height = 8,dpi = 600)
 ```
 
@@ -653,15 +710,7 @@ Table3_DesireIndex
 ```
 
 ```{r}
-library(knitr)
-
-tableDesire =kable(
-  Table3_DesireIndex,
-  caption = "Predicted genetic gain applying the Desire Index based on genotypic BLUPs."
-)
-```
-
-```{r}
+#| eval: false
 write.xlsx(Table3_DesireIndex, "Table3_DesireIndex.xlsx", rowNames = FALSE)
 ```
 
@@ -678,24 +727,15 @@ gtb1plot = plot(gtb1,
             repulsion = 2,
             col.line = "orange",
             plot_theme = theme_metan())
-gtb1plot
-
-gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PN, GY, OHSW))
-
-gtb1plot = plot(gtb1,
-     col.env = "orange",
-            col.gen = "purple",
-            size.text.gen = 5,
-            size.text.env = 8, repel = T,
-            repulsion = 2,
-            col.line = "orange",
-            plot_theme = theme_metan())
-gtb1plot
 ```
 
 ### Panel Desire Gain Index + GYT Biplot
 
 ```{r}
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 6
 gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
   ncol = 2,
   common.legend = F, legend = "bottom",
@@ -709,6 +749,7 @@ gt_desired_panel
 ```
 
 ```{r}
+#| eval: false
 ggsave("gt_desired_panel_LB.pdf", plot = gt_desired_panel, width = 12, height = 6,dpi = 600)
 ```
 
@@ -746,6 +787,8 @@ df_long$Trait <- factor(
 ```
 
 ```{r}
+#| fig-width: 12
+#| fig-height: 10
 plot_density_SG <- function(data_trait, selected, xlab, bw = NULL) {
   
   df <- data_trait %>%
