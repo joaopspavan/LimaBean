@@ -1,0 +1,96 @@
+---
+title: "Desire index"
+author: "J.T.B. CHAGAS"
+date: "2026-05-05"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+load("../Data/ebvMat.rda")
+
+
+```
+
+
+
+## Desire index
+
+```{r}
+# DESIRE INDEX FUNCTION
+
+gainDiff <- function(ebvMat, b_ebv, dGain, nSel){ 
+  
+  take <- order(ebvMat %*% b_ebv, decreasing = TRUE)[1:nSel]
+  
+  mu_Sel <- colMeans(ebvMat[take, ])
+  resp   <- mu_Sel - colMeans(ebvMat)
+  resp   <- resp / sqrt(sum(resp^2))
+  
+  sum((resp - dGain)^2)
+}
+```
+
+
+```{r}
+ebvMat <- ebvMat[complete.cases(ebvMat), ]
+#COV MATRIX -EBVS
+library(AlphaSimR)
+
+G_ebv <- AlphaSimR::popVar(ebvMat)
+G_ebv
+# G_ebv |>  kableExtra::kable() |> kableExtra::kable_styling()
+
+```
+
+```{r}
+#desired gains
+desiredGain <- c(
+  GY   =  2,
+  OHSW =  1,
+  NDF  = -1,
+  NDM  = -1,
+  PH   =  0,
+  PN   =  1
+)
+desiredGain <- desiredGain / sqrt(sum(desiredGain^2))
+sum(desiredGain^2)
+```
+
+```{r}
+b_ebv <- solve(G_ebv) %*% desiredGain
+b_ebv
+```
+
+```{r}
+nSel <- 5
+opt <- optim(
+  par     = b_ebv,
+  fn      = gainDiff,
+  ebvMat  = ebvMat,
+  dGain   = desiredGain,
+  nSel    = nSel
+)
+opt_weights <- opt$par
+opt_weights
+```
+
+```{r}
+DesireIndex <- ebvMat %*% opt_weights
+
+DesireIndex <- data.frame(
+  GEN = rownames(ebvMat),
+  DesireIndex = as.numeric(DesireIndex)
+) |>
+  dplyr::arrange(desc(DesireIndex))
+
+head(DesireIndex, 10)
+
+```
+
+```{r}
+selected <- DesireIndex[1:5, ]
+selected
+```
+

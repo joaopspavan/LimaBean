@@ -48,7 +48,7 @@ library(writexl)
     |        Seed Width        |   SW    |  mm   |
 
 ```{r}
-LB = read.xlsx("C://Users//joaop//Desktop//fava//LimaBean.xlsx")
+LB = read.xlsx("Data//LimaBean.xlsx")
 LB$Block    <- as.factor(LB$Block)
 LB$Env    <- as.factor(LB$Env)
 LB$Genotype <- as.factor(LB$Genotype)
@@ -104,6 +104,11 @@ LRT
 write_xlsx(LRT, "LRT_LB.xlsx")
 ```
 
+
+
+
+
+
 #### BLUPs
 
 ```{r}
@@ -119,6 +124,7 @@ write_xlsx(BLUPgen, "BLUPgen_LB.xlsx")
 ```
 
 ```{r}
+
 library(dplyr)
 library(tibble)
 
@@ -136,6 +142,7 @@ ebvMat <- data.frame(
 
 dim(ebvMat)
 head(ebvMat)
+save(ebvMat,file = "Data/ebvMat.rda")
 ```
 
 ```{r}
@@ -560,6 +567,7 @@ gainDiff <- function(ebvMat, b_ebv, dGain, nSel){
 }
 ```
 
+
 ```{r}
 ebvMat <- ebvMat[complete.cases(ebvMat), ]
 #COV MATRIX -EBVS
@@ -567,6 +575,7 @@ library(AlphaSimR)
 
 G_ebv <- AlphaSimR::popVar(ebvMat)
 G_ebv
+
 ```
 
 ```{r}
