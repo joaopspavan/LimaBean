@@ -1,0 +1,867 @@
+---
+title: "Untitled"
+format: pdf
+editor: visual
+---
+
+```{r, warning =FALSE, message=FALSE}
+library(reshape2)
+library(ggplot2)
+library(openxlsx)
+library(asreml)
+library(dplyr)
+library(tibble)
+library(ggplot2)
+library(metan)
+library(writexl)
+```
+
+# Indeterminate
+
+```{r}
+limabean_indet = read.xlsx("C://Users//joaop//Documents//GitHub//LimaBean//Data//LimaBean_ESALQ_indeterminate.xlsx")
+limabean_indet$Block    <- as.factor(limabean_indet$Block)
+limabean_indet$Plot    <- as.factor(limabean_indet$Plot)
+limabean_indet$Genotype <- as.factor(limabean_indet$Genotype)
+limabean_indet$Row<- as.factor(limabean_indet$Row)
+limabean_indet$Column <- as.factor(limabean_indet$Column)
+limabean_indet$Env    <- as.factor(limabean_indet$Env)
+str(limabean_indet)
+```
+
+```{r}
+lb_indet_gafem = gafem(limabean_indet,
+                       gen = Genotype,
+                       rep = Block,
+                       resp = c(NDF, NDM, PH, PN, GY, OHSW))
+```
+
+```{r}
+lb_indet_gamem = gamem(limabean_indet,
+                       gen = Genotype,
+                       rep = Block,
+                       resp = c(NDF, NDM, PH, PN, GY, OHSW))
+```
+
+```{r}
+lb_indet_anova = anova_ind(limabean_indet,
+                       gen = Genotype,
+                       rep = Block,
+                       env = Env,
+                       resp = c(NDF, NDM, PH, PN, GY, OHSW))
+```
+
+```{r}
+GYLRT   = lb_indet_gamem$GY$LRT
+OHSWLRT = lb_indet_gamem$OHSW$LRT 
+NDFLRT  = lb_indet_gamem$NDF$LRT
+NDMLRT  = lb_indet_gamem$NDM$LRT 
+PHLRT   = lb_indet_gamem$PH$LRT
+PNLRT   = lb_indet_gamem$PN$LRT
+
+LRT = list(
+  GY_LRT   = GYLRT,
+  OHSW_LRT = OHSWLRT,
+  NDF_LRT  = NDFLRT,
+  NDM_LRT  = NDMLRT,
+  PH_LRT   = PHLRT,
+  PN_LRT   = PNLRT
+)
+
+library(writexl)
+write_xlsx(LRT, "LRT_LBesalqindet.xlsx")
+```
+
+```{r}
+BLUPgen = list(
+  GY_BLUP   = lb_indet_gamem$GY$BLUPgen,
+  OHSW_BLUP = lb_indet_gamem$OHSW$BLUPgen,
+  NDF_BLUP  = lb_indet_gamem$NDF$BLUPgen,
+  NDM_BLUP  = lb_indet_gamem$NDM$BLUPgen,
+  PH_BLUP   = lb_indet_gamem$PH$BLUPgen,
+  PN_BLUP   = lb_indet_gamem$PN$BLUPgen
+)
+
+write_xlsx(BLUPgen, "BLUPgen_LBesalqindet.xlsx")
+```
+
+```{r}
+library(dplyr)
+library(tibble)
+
+ebvMat <- data.frame(
+  GEN = lb_indet_gamem$GY$BLUPgen$GEN,
+  GY   = lb_indet_gamem$GY$BLUPgen$Predicted,
+  OHSW = lb_indet_gamem$OHSW$BLUPgen$Predicted,
+  NDF  = lb_indet_gamem$NDF$BLUPgen$Predicted,
+  NDM  = lb_indet_gamem$NDM$BLUPgen$Predicted,
+  PH   = lb_indet_gamem$PH$BLUPgen$Predicted,
+  PN   = lb_indet_gamem$PN$BLUPgen$Predicted
+) |>
+  column_to_rownames("GEN") |>
+  as.matrix()
+```
+
+```{r}
+trait_units <- c(
+  GY   = "kg/ha",
+  OHSW = "g",
+  PH   = "cm",
+  PN   = "number",
+  NDF  = "days",
+  NDM  = "days"
+)
+
+plot_trait_heatmap <- function(x, trait_name) {
+  
+  df <- x[[trait_name]]$BLUPgen
+  
+  # ordem correta dos genótipos (baseado no valor)
+  df <- df %>%
+    arrange(Predicted) %>%
+    mutate(
+      GEN = factor(GEN, levels = GEN),
+      Trait = trait_name
+    )
+  
+  ggplot(df, aes(x = GEN, y = Trait, fill = Predicted)) +
+    geom_tile() +
+    scale_fill_gradientn(
+      colours = c("orange", "#E37383", "purple"),
+      name = bquote(hat(y)~"("~.(trait_units[[trait_name]])~")")
+    ) +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+      axis.text.y = element_text(face = "bold"),
+      legend.position = "right",
+      panel.grid = element_blank()
+    )
+}
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+plot_trait_heatmap <- function(x, trait_name) {
+  
+  # Extrair BLUPs
+  df <- as.data.frame(x[[trait_name]]$BLUPgen)
+  
+  # Ajustar GEN se estiver como rownames
+  if (!"GEN" %in% colnames(df)) {
+    df$GEN <- rownames(df)
+  }
+  
+  # Renomear coluna de valores para Predicted se não tiver
+  if (!"Predicted" %in% colnames(df)) {
+    colnames(df)[1] <- "Predicted"
+  }
+  
+  # Ordenar e criar fator para GEN
+  df <- df[order(df$Predicted), ]
+  df$GEN <- factor(df$GEN, levels = df$GEN)
+  df$Trait <- trait_name
+  
+  # Plot
+  ggplot(df, aes(x = GEN, y = Trait, fill = Predicted)) +
+    geom_tile() +
+    scale_fill_gradientn(
+      colours = c("orange", "#E37383", "purple"),
+      name = bquote(hat(y)~"("~.(trait_units[[trait_name]])~")")
+    ) +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+      axis.text.y = element_text(face = "bold"),
+      legend.position = "right",
+      panel.grid = element_blank()
+    )
+}
+traits <- c("GY", "OHSW", "PH", "PN", "NDF", "NDM")
+
+BLUP_heatmaps <- lapply(traits, function(trait) {
+  plot_trait_heatmap(lb_indet_gamem, trait)
+})
+
+library(ggpubr)
+blups_heatmap_panel <- ggarrange(
+  plotlist = BLUP_heatmaps,
+  ncol = 2, nrow = 3,
+  labels = LETTERS[1:6],
+  font.label = list(size = 10, face = "bold"),
+  align = "v"
+)
+blups_heatmap_panel
+```
+
+```{r}
+ggsave("blups_heatmap_panel_indet.png", blups_heatmap_panel, dpi = 300,
+       height = 12, width = 14)
+```
+
+```{r}
+corrplot = plot(
+  corr_coef(as.data.frame(ebvMat), GY, OHSW, NDF, NDM, PH, PN),
+  type = "upper",
+  diag = FALSE,
+  reorder = TRUE,
+  signif = c("stars"),
+  p_val = 0.05
+)
+
+corrplot
+```
+
+```{r}
+anova_table <- map_dfr(names(lb_indet_anova), function(trait) {
+  
+  lb_indet_anova[[trait]]$individual %>%   # <- aqui está o segredo
+    mutate(Trait = trait, .before = 1)
+  
+})
+
+anova_table
+```
+
+```{r}
+write.xlsx(anova_table, "anova_results.xlsx")
+```
+
+```{r}
+anova_gafem <- map_dfr(names(lb_indet_gafem), function(trait) {
+  lb_indet_gafem[[trait]]$anova %>%
+    mutate(Trait = trait, .before = 1)
+})
+
+anova_gafem
+```
+
+```{r}
+details_gafem <- map_dfr(names(lb_indet_gafem), function(trait) {
+  lb_indet_gafem[[trait]]$details %>%
+    mutate(Trait = trait, .before = 1)
+})
+```
+
+```{r}
+write_xlsx(list(
+  anova_gafem = anova_gafem,
+  details = details_gafem
+), path = "resultslb.xlsx")
+```
+
+```{r}
+traits <- c("GY", "OHSW", "NDF", "NDM", "PH", "PN")
+
+# Criar matriz de BLUPs
+ebvMat <- map(traits, function(trait) {
+  
+  lb_indet_gamem[[trait]]$BLUPgen %>%
+    select(GEN, Predicted) %>%       # pega genótipos e BLUP previsto
+    rename(!!trait := Predicted)     # renomeia coluna para o trait atual
+  
+}) %>%
+  reduce(full_join, by = "GEN") %>%   # junta todas as características
+  column_to_rownames("GEN") %>%       # define genótipos como rownames
+  as.matrix()                         # converte para matriz
+```
+
+```{r}
+library(AlphaSimR)
+library(dplyr)
+library(ggplot2)
+library(openxlsx)
+
+# --- 1. Filtrar NAs se houver ---
+ebvMat <- ebvMat[complete.cases(ebvMat), ]
+
+# --- 2. Matriz de covariância genético dos BLUPs ---
+G_ebv <- AlphaSimR::popVar(ebvMat)
+G_ebv
+
+# --- 3. Ganhos desejados ---
+desiredGain <- c(
+  GY   =  2,
+  OHSW =  1,
+  NDF  = -1,
+  NDM  = -1,
+  PH   =  0,
+  PN   =  1
+)
+desiredGain <- desiredGain / sqrt(sum(desiredGain^2))
+sum(desiredGain^2) # deve ser 1
+
+# --- 4. Coeficientes iniciais ---
+b_ebv <- solve(G_ebv) %*% desiredGain
+b_ebv
+
+# --- 5. Função de otimização do Desire Index ---
+gainDiff <- function(ebvMat, b_ebv, dGain, nSel){ 
+  take <- order(ebvMat %*% b_ebv, decreasing = TRUE)[1:nSel]
+  mu_Sel <- colMeans(ebvMat[take, ])
+  resp   <- mu_Sel - colMeans(ebvMat)
+  resp   <- resp / sqrt(sum(resp^2))
+  sum((resp - dGain)^2)
+}
+
+# --- 6. Número de genótipos selecionados ---
+nSel <- 3
+
+# --- 7. Otimização ---
+opt <- optim(
+  par     = b_ebv,
+  fn      = gainDiff,
+  ebvMat  = ebvMat,
+  dGain   = desiredGain,
+  nSel    = nSel
+)
+opt_weights <- opt$par
+opt_weights
+
+# --- 8. Calcular Desire Index para todos os genótipos ---
+DesireIndex <- ebvMat %*% opt_weights
+DesireIndex <- data.frame(
+  GEN = rownames(ebvMat),
+  DesireIndex = as.numeric(DesireIndex)
+) %>%
+  arrange(desc(DesireIndex))
+
+# --- 9. Salvar ranking em Excel ---
+write.xlsx(DesireIndex, "DesireIndex.xlsx")
+
+# --- 10. Seleção dos top nSel genótipos ---
+selected <- DesireIndex[1:nSel, ]
+selected
+
+# --- 11. Ganho esperado vs alcançado ---
+sel_mat <- ebvMat[selected$GEN, ]
+expResp <- colMeans(sel_mat) - colMeans(ebvMat)
+scaleExpResp <- expResp / sqrt(sum(expResp^2))
+
+df_vec <- data.frame(
+  Trait = names(desiredGain),
+  Desired  = desiredGain,
+  Achieved = scaleExpResp
+)
+
+# --- 12. Plot dos ganhos desejados vs alcançados ---
+ggplot(df_vec, aes(x = Desired, y = Achieved)) +
+  geom_point(size = 3, color = "purple") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_text(aes(label = Trait), nudge_x = 0.05, size = 5, color = "orange") +
+  coord_equal(xlim = c(-1,1), ylim = c(-1,1)) +
+  labs(x = "Desired Gain", y = "Achieved Gain") +
+  theme_classic(base_size = 14)
+
+# --- 13. Plot circular do Desire Index ---
+di_df <- DesireIndex %>%
+  dplyr::arrange(desc(DesireIndex)) %>%
+  dplyr::mutate(
+    GEN = factor(GEN, levels = GEN),
+    Selected = ifelse(GEN %in% selected$GEN, "Selected", "Not selected")
+  )
+
+# Plot circular
+desiredgainplot <- ggplot(di_df, aes(x = GEN, y = DesireIndex, fill = Selected)) +
+  geom_col(width = 0.9, color = "black", size = 0.2) +
+  coord_polar() +
+  scale_fill_manual(values = c("Selected" = "#6A1B9A", "Not selected" = "orange")) +
+  labs(fill = NULL) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(face = "bold"),
+    axis.title = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+# Exibir o plot
+desiredgainplot
+```
+
+```{r}
+library(ggplot2)
+
+# Ordenar os genótipos por Desire Index
+di_df <- di_df %>%
+  dplyr::arrange(DesireIndex) %>%
+  dplyr::mutate(GEN = factor(GEN, levels = GEN))  # mantém a ordem para o eixo y
+
+# Plot lollipop
+desiredgainplot2 = ggplot(di_df, aes(x = DesireIndex, y = GEN, color = Selected)) +
+  geom_segment(aes(x = 0, xend = DesireIndex, y = GEN, yend = GEN), size = 0.8) +
+  geom_point(size = 4, fill = "white") +
+  scale_color_manual(values = c("Selected" = "#6A1B9A", "Not selected" = "orange")) +
+  labs(
+    x = "Desire Index",
+    y = "Genotype",
+    title = "Lollipop Plot - Desire Index",
+    color = "Selection"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.y = element_text(face = "bold"),
+    axis.title.y = element_blank(),
+    legend.position = "bottom"
+  )
+desiredgainplot2
+```
+
+```{r}
+ggsave("desiredgainplot_indet.png",
+       plot = desiredgainplot,
+       dpi = 300,
+       width = 10,
+       height = 12)
+ggsave("desiredgainplot2_indet.png",
+       plot = desiredgainplot2,
+       dpi = 300,
+       width = 10,
+       height = 12)
+```
+
+# Determinate
+
+```{r}
+limabean_det = read.xlsx("C://Users//joaop//Documents//GitHub//LimaBean//Data//LimaBean_ESALQ_determinate.xlsx")
+limabean_det$Block    <- as.factor(limabean_det$Block)
+limabean_det$Plot    <- as.factor(limabean_det$Plot)
+limabean_det$Genotype <- as.factor(limabean_det$Genotype)
+limabean_det$Row<- as.factor(limabean_det$Row)
+limabean_det$Column <- as.factor(limabean_det$Column)
+limabean_det$Env    <- as.factor(limabean_det$Env)
+str(limabean_det)
+```
+
+```{r}
+lb_det_gafem = gafem(limabean_det,
+                       gen = Genotype,
+                       rep = Block,
+                       resp = c(NDF, NDM, PH, PN, GY, OHSW))
+```
+
+```{r}
+lb_det_gamem = gamem(limabean_det,
+                       gen = Genotype,
+                       rep = Block,
+                       resp = c(NDF, NDM, PH, PN, GY, OHSW))
+```
+
+```{r}
+lb_det_anova = anova_ind(limabean_det,
+                       gen = Genotype,
+                       rep = Block,
+                       env = Env,
+                       resp = c(NDF, NDM, PH, PN, GY, OHSW))
+```
+
+```{r}
+GYLRT   = lb_det_gamem$GY$LRT
+OHSWLRT = lb_det_gamem$OHSW$LRT 
+NDFLRT  = lb_det_gamem$NDF$LRT
+NDMLRT  = lb_det_gamem$NDM$LRT 
+PHLRT   = lb_det_gamem$PH$LRT
+PNLRT   = lb_det_gamem$PN$LRT
+
+LRT = list(
+  GY_LRT   = GYLRT,
+  OHSW_LRT = OHSWLRT,
+  NDF_LRT  = NDFLRT,
+  NDM_LRT  = NDMLRT,
+  PH_LRT   = PHLRT,
+  PN_LRT   = PNLRT
+)
+
+library(writexl)
+write_xlsx(LRT, "LRT_LBesalqdet.xlsx")
+```
+
+```{r}
+BLUPgen = list(
+  GY_BLUP   = lb_det_gamem$GY$BLUPgen,
+  OHSW_BLUP = lb_det_gamem$OHSW$BLUPgen,
+  NDF_BLUP  = lb_det_gamem$NDF$BLUPgen,
+  NDM_BLUP  = lb_det_gamem$NDM$BLUPgen,
+  PH_BLUP   = lb_det_gamem$PH$BLUPgen,
+  PN_BLUP   = lb_det_gamem$PN$BLUPgen
+)
+
+write_xlsx(BLUPgen, "BLUPgen_LBesalqdet.xlsx")
+```
+
+```{r}
+library(dplyr)
+library(tibble)
+
+ebvMat <- data.frame(
+  GEN = lb_det_gamem$GY$BLUPgen$GEN,
+  GY   = lb_det_gamem$GY$BLUPgen$Predicted,
+  OHSW = lb_det_gamem$OHSW$BLUPgen$Predicted,
+  NDF  = lb_det_gamem$NDF$BLUPgen$Predicted,
+  NDM  = lb_det_gamem$NDM$BLUPgen$Predicted,
+  PH   = lb_det_gamem$PH$BLUPgen$Predicted,
+  PN   = lb_det_gamem$PN$BLUPgen$Predicted
+) |>
+  column_to_rownames("GEN") |>
+  as.matrix()
+```
+
+```{r}
+trait_units <- c(
+  GY   = "kg/ha",
+  OHSW = "g",
+  PH   = "cm",
+  PN   = "number",
+  NDF  = "days",
+  NDM  = "days"
+)
+
+plot_trait_heatmap <- function(x, trait_name) {
+  
+  df <- x[[trait_name]]$BLUPgen
+  
+  # ordem correta dos genótipos (baseado no valor)
+  df <- df %>%
+    arrange(Predicted) %>%
+    mutate(
+      GEN = factor(GEN, levels = GEN),
+      Trait = trait_name
+    )
+  
+  ggplot(df, aes(x = GEN, y = Trait, fill = Predicted)) +
+    geom_tile() +
+    scale_fill_gradientn(
+      colours = c("orange", "#E37383", "purple"),
+      name = bquote(hat(y)~"("~.(trait_units[[trait_name]])~")")
+    ) +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+      axis.text.y = element_text(face = "bold"),
+      legend.position = "right",
+      panel.grid = element_blank()
+    )
+}
+```
+
+```{r}
+plot_trait_heatmap <- function(x, trait_name) {
+  
+  # Extrair BLUPs
+  df <- x[[trait_name]]$BLUPgen
+  
+  # Converter para data.frame
+  df <- as.data.frame(df)
+  
+  # Se os nomes dos genótipos estão como rownames
+  if (!"GEN" %in% colnames(df)) {
+    df$GEN <- rownames(df)
+  }
+  
+  # Renomear primeira coluna para Predicted
+  if (!"Predicted" %in% colnames(df)) {
+    colnames(df)[1] <- "Predicted"
+  }
+  
+  # Remover colunas duplicadas (se houver)
+  df <- df[, !duplicated(colnames(df))]
+  
+  # Ordenar e transformar GEN em fator
+  df <- df[order(df$Predicted), ]
+  df$GEN <- factor(df$GEN, levels = df$GEN)
+  df$Trait <- trait_name
+  
+  # Criar heatmap
+  ggplot(df, aes(x = GEN, y = Trait, fill = Predicted)) +
+    geom_tile() +
+    scale_fill_gradientn(
+      colours = c("orange", "#E37383", "purple"),
+      name = bquote(hat(y)~"("~.(trait_units[[trait_name]])~")")
+    ) +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+      axis.text.y = element_text(face = "bold"),
+      legend.position = "right",
+      panel.grid = element_blank()
+    )
+}
+```
+
+```{r}
+BLUP_heatmaps <- lapply(traits, function(trait) {
+  plot_trait_heatmap(lb_det_gamem, trait)
+})
+
+blups_heatmap_panel <- ggarrange(
+  plotlist = BLUP_heatmaps,
+  ncol = 2, nrow = 3,
+  labels = c("A", "B", "C", "D", "E", "F"),
+  font.label = list(size = 10, face = "bold"),
+  align = "v"
+)
+
+blups_heatmap_panel
+```
+
+```{r}
+ggsave("blups_heatmap_panel_det.png", blups_heatmap_panel, dpi = 300,
+       height = 12, width = 14)
+```
+
+```{r}
+corrplot = plot(
+  corr_coef(as.data.frame(ebvMat), GY, OHSW, NDF, NDM, PH, PN),
+  type = "upper",
+  diag = FALSE,
+  reorder = TRUE,
+  signif = c("stars"),
+  p_val = 0.05
+)
+
+corrplot
+```
+
+```{r}
+library(dplyr)
+library(purrr)
+library(writexl)
+
+# ------------------------------
+# 1. Tabela ANOVA individual (anova_ind)
+# ------------------------------
+anova_table <- map_dfr(names(lb_det_anova), function(trait) {
+  df <- as.data.frame(lb_det_anova[[trait]]$individual)
+  cbind(Trait = trait, df)
+})
+
+# Exportar
+write_xlsx(anova_table, "ANOVA_individual_LBesalqdet.xlsx")
+
+# ------------------------------
+# 2. Tabela ANOVA one-way (gafem)
+# ------------------------------
+anova_gafem <- map_dfr(names(lb_det_gafem), function(trait) {
+  df <- as.data.frame(lb_det_gafem[[trait]]$anova)
+  cbind(Trait = trait, df)
+})
+
+write_xlsx(anova_gafem, "ANOVA_gafem_LBesalqdet.xlsx")
+
+# ------------------------------
+# 3. Detalhes do modelo (gafem)
+# ------------------------------
+details_gafem <- map_dfr(names(lb_det_gafem), function(trait) {
+  df <- as.data.frame(lb_det_gafem[[trait]]$details)
+  cbind(Trait = trait, df)
+})
+
+write_xlsx(details_gafem, "Details_gafem_LBesalqdet.xlsx")
+
+# ------------------------------
+# 4. LRT do gamem
+# ------------------------------
+LRT_table <- map_dfr(names(lb_det_gamem), function(trait) {
+  df <- as.data.frame(lb_det_gamem[[trait]]$LRT)
+  cbind(Trait = trait, df)
+})
+
+write_xlsx(LRT_table, "LRT_gamem_LBesalqdet.xlsx")
+
+# ------------------------------
+# 5. BLUPs do gamem
+# ------------------------------
+BLUP_table <- map_dfr(names(lb_det_gamem), function(trait) {
+  df <- as.data.frame(lb_det_gamem[[trait]]$BLUPgen)
+  
+  # Ajusta coluna GEN caso esteja como rownames
+  if (!"GEN" %in% colnames(df)) {
+    df$GEN <- rownames(df)
+  }
+  
+  # Renomeia primeira coluna para Predicted se necessário
+  if (!"Predicted" %in% colnames(df)) {
+    colnames(df)[1] <- "Predicted"
+  }
+  
+  cbind(Trait = trait, df)
+})
+
+write_xlsx(BLUP_table, "BLUPgen_gamem_LBesalqdet.xlsx")
+```
+
+```{r}
+traits <- c("GY", "OHSW", "NDF", "NDM", "PH", "PN")
+
+# Criar matriz de BLUPs
+ebvMat <- map(traits, function(trait) {
+  
+  lb_det_gamem[[trait]]$BLUPgen %>%
+    select(GEN, Predicted) %>%       
+    rename(!!trait := Predicted)     
+  
+}) %>%
+  reduce(full_join, by = "GEN") %>%   
+  column_to_rownames("GEN") %>%       
+  as.matrix()                         
+```
+
+```{r}
+library(AlphaSimR)
+library(dplyr)
+library(ggplot2)
+library(openxlsx)
+
+# --- 1. Filtrar NAs se houver ---
+ebvMat <- ebvMat[complete.cases(ebvMat), ]
+
+# --- 2. Matriz de covariância genético dos BLUPs ---
+G_ebv <- AlphaSimR::popVar(ebvMat)
+G_ebv
+
+# --- 3. Ganhos desejados ---
+desiredGain <- c(
+  GY   =  2,
+  OHSW =  1,
+  NDF  = -1,
+  NDM  = -1,
+  PH   =  0,
+  PN   =  1
+)
+desiredGain <- desiredGain / sqrt(sum(desiredGain^2))
+sum(desiredGain^2) # deve ser 1
+
+# --- 4. Coeficientes iniciais ---
+b_ebv <- solve(G_ebv) %*% desiredGain
+b_ebv
+
+# --- 5. Função de otimização do Desire Index ---
+gainDiff <- function(ebvMat, b_ebv, dGain, nSel){ 
+  take <- order(ebvMat %*% b_ebv, decreasing = TRUE)[1:nSel]
+  mu_Sel <- colMeans(ebvMat[take, ])
+  resp   <- mu_Sel - colMeans(ebvMat)
+  resp   <- resp / sqrt(sum(resp^2))
+  sum((resp - dGain)^2)
+}
+
+# --- 6. Número de genótipos selecionados ---
+nSel <- 3
+
+# --- 7. Otimização ---
+opt <- optim(
+  par     = b_ebv,
+  fn      = gainDiff,
+  ebvMat  = ebvMat,
+  dGain   = desiredGain,
+  nSel    = nSel
+)
+opt_weights <- opt$par
+opt_weights
+
+# --- 8. Calcular Desire Index para todos os genótipos ---
+DesireIndex <- ebvMat %*% opt_weights
+DesireIndex <- data.frame(
+  GEN = rownames(ebvMat),
+  DesireIndex = as.numeric(DesireIndex)
+) %>%
+  arrange(desc(DesireIndex))
+
+# --- 9. Salvar ranking em Excel ---
+write.xlsx(DesireIndex, "DesireIndex.xlsx")
+
+# --- 10. Seleção dos top nSel genótipos ---
+selected <- DesireIndex[1:nSel, ]
+selected
+
+# --- 11. Ganho esperado vs alcançado ---
+sel_mat <- ebvMat[selected$GEN, ]
+expResp <- colMeans(sel_mat) - colMeans(ebvMat)
+scaleExpResp <- expResp / sqrt(sum(expResp^2))
+
+df_vec <- data.frame(
+  Trait = names(desiredGain),
+  Desired  = desiredGain,
+  Achieved = scaleExpResp
+)
+
+ggplot(df_vec, aes(x = Desired, y = Achieved)) +
+  geom_point(size = 3, color = "purple") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_text(aes(label = Trait), nudge_x = 0.05, size = 5, color = "orange") +
+  coord_equal(xlim = c(-1,1), ylim = c(-1,1)) +
+  labs(x = "Desired Gain", y = "Achieved Gain") +
+  theme_classic(base_size = 14)
+
+di_df <- DesireIndex %>%
+  dplyr::arrange(desc(DesireIndex)) %>%
+  dplyr::mutate(
+    GEN = factor(GEN, levels = GEN),
+    Selected = ifelse(GEN %in% selected$GEN, "Selected", "Not selected")
+  )
+
+desiredgainplot_det <- ggplot(di_df, aes(x = GEN, y = DesireIndex, fill = Selected)) +
+  geom_col(width = 0.9, color = "black", size = 0.2) +
+  coord_polar() +
+  scale_fill_manual(values = c("Selected" = "#6A1B9A", "Not selected" = "orange")) +
+  labs(fill = NULL) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(face = "bold"),
+    axis.title = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+desiredgainplot_det
+```
+
+```{r}
+library(ggplot2)
+
+di_df <- di_df %>%
+  dplyr::arrange(DesireIndex) %>%
+  dplyr::mutate(GEN = factor(GEN, levels = GEN))  # mantém a ordem para o eixo y
+
+desiredgainplot2_det = ggplot(di_df, aes(x = DesireIndex, y = GEN, color = Selected)) +
+  geom_segment(aes(x = 0, xend = DesireIndex, y = GEN, yend = GEN), size = 0.8) +
+  geom_point(size = 4, fill = "white") +
+  scale_color_manual(values = c("Selected" = "#6A1B9A", "Not selected" = "orange")) +
+  labs(
+    x = "Desire Index",
+    y = "Genotype",
+    title = "Lollipop Plot - Desire Index",
+    color = "Selection"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.y = element_text(face = "bold"),
+    axis.title.y = element_blank(),
+    legend.position = "bottom"
+  )
+desiredgainplot2_det
+```
+
+```{r}
+ggsave("desiredgainplot_det.png",
+       plot = desiredgainplot_det,
+       dpi = 300,
+       width = 10,
+       height = 12)
+ggsave("desiredgainplot2_det.png",
+       plot = desiredgainplot2_det,
+       dpi = 300,
+       width = 10,
+       height = 12)
+```

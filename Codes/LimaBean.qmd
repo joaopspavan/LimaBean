@@ -10,6 +10,8 @@ editor: visual
 execute:
   message: false
   warning: false
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Authors
@@ -629,6 +631,8 @@ df <- dplyr::arrange(DesireIndex, dplyr::desc(DesireIndex)) |>
   )
 ```
 
+
+
 ```{r}
 library(ggplot2)
 
@@ -786,11 +790,34 @@ df_long$Trait <- factor(
 )
 ```
 
+### Density plot
 ```{r}
+<<<<<<< HEAD
 #| fig-width: 12
 #| fig-height: 10
 plot_density_SG <- function(data_trait, selected, xlab, bw = NULL) {
   
+=======
+BLUPgen=readxl::read_xlsx("BLUPgen_LB.xlsx",)
+str(BLUPgen)
+all_sheets <- readxl::excel_sheets("BLUPgen_LB.xlsx")
+BLUPgen <- purrr::map(purrr::set_names(all_sheets),
+                   readxl::read_excel,
+                   path = "BLUPgen_LB.xlsx")
+
+
+DesireIndex <- readxl::read_xlsx("Desireindex.xlsx")
+
+selected <- DesireIndex[1:5, ]
+selected
+```
+
+```{r}
+
+plot_density_SG <- function(data_trait, selected, xlab) {
+  require(dplyr)
+  require(ggplot2)
+>>>>>>> 1145223f38336ba320db0ea956cddc2a0a6babcf
   df <- data_trait %>%
     dplyr::mutate(
       Status = factor(
@@ -824,7 +851,11 @@ plot_density_SG <- function(data_trait, selected, xlab, bw = NULL) {
 library(patchwork)
 
 pd1 <- plot_density_SG(BLUPgen$GY_BLUP, selected,
+<<<<<<< HEAD
                       expression(bold("GY (kg ha"^{-1}*")")), bw = 100)
+=======
+                      expression(bold("GY (kg ha"^{-1}*")")))+    geom_density(alpha = 0.6, color = "black", linewidth = 0.4,adjust=10);pd1 
+>>>>>>> 1145223f38336ba320db0ea956cddc2a0a6babcf
 
 pd2 <- plot_density_SG(BLUPgen$OHSW_BLUP, selected,
                       expression(bold("OHSW (g)")), bw = 2.5)
