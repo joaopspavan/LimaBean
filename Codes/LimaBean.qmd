@@ -71,13 +71,14 @@ hist(LB$GY)
 hist(LB$OHSW)
 ```
 
-## Single environment analyses
 
+## Anova
 ```{r}
-# aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
+aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
 ```
 
 
+## Single environment analyses
 ```{r}
 
 data.list = split(LB, f = LB$Env)
@@ -102,7 +103,7 @@ st
 ## Mixed-effect models
 
 ```{r}
-mixedmodel <- gamem_met(LB,env = Env, gen = GEN, rep = Block,random = "all",resp = everything())
+mixedmodel <- gamem_met(LB,env = Env, gen = GEN, rep = Block,random = "gen" ,resp = everything())
 ```
 
 #### LRT
