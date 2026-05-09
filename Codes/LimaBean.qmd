@@ -128,8 +128,41 @@ ggsave(plot=vcp,device = "png",filename ="Plots/varcomp.png",dpi = "retina",heig
 ## Mixed-effect models
 
 ```{r}
+
 mixedmodel <- gamem_met(LB,env = Env, gen = GEN, rep = Block,random = "gen" ,resp = everything())
+
 ```
+
+```{r}
+custom_palette=viridis::turbo(n = 6)
+
+
+vc=do.call(rbind,vccomp)
+colnames(vc)
+traits=c("GY","OHSW","NDF","NDM","PH","PN")
+
+vc_long <- reshape2::melt(vc, measure.vars = traits, variable.name = "trait")
+
+vc_long$effect =paste(vc_long$Group,vc_long$env, sep = "_")
+
+
+
+
+vcp <- vc_long  |> 
+  ggplot(aes(x = Group, y = value, fill = effect)) + 
+  geom_col(position = "stack", just = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(face = "bold")) + 
+  facet_wrap(~trait, scales = "free") +
+  labs(x = "Effects", y = "Variance components", fill = "Effects") +
+  scale_fill_manual(
+    values = custom_palette,  # Use the same labels as in the factor
+  )
+vcp
+ggsave(plot=vcp,device = "pdf",filename ="Plots/varcomp.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=vcp,device = "png",filename ="Plots/varcomp.png",dpi = "retina",height = 6,width = 8,bg = "white")
+```
+
 
 #### LRT
 
