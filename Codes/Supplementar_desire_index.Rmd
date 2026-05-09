@@ -56,7 +56,7 @@ load("../Data/ebvMat.rda")
 
 
 
-## Desire index
+# Desire index
 
 ```{r}
 # DESIRE INDEX FUNCTION
@@ -81,7 +81,7 @@ library(AlphaSimR)
 
 G_ebv <- AlphaSimR::popVar(ebvMat)
 G_ebv
-# G_ebv |>  kableExtra::kable() |> kableExtra::kable_styling()
+
 
 ```
 
