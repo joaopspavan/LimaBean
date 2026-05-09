@@ -71,11 +71,33 @@ hist(LB$GY)
 hist(LB$OHSW)
 ```
 
-## anova
+## Single environment analyses
 
 ```{r}
-aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
+# aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
 ```
+
+
+```{r}
+
+data.list = split(LB, f = LB$Env)
+
+for (j in names(data.list)) {
+
+   x = droplevels(data.list[[j]])
+  cat("====> Environment:", j, fill = TRUE)
+
+st <- gamem(x,
+             gen = GEN,
+             rep =  Block,
+             resp = everything())
+st
+
+
+}
+
+```
+
 
 ## Mixed-effect models
 
