@@ -1,41 +1,14 @@
 ---
-title: "Leveraging G x E Interaction to Optimize Multi-Trait Selection in Lima Bean"
+title: "Leveraging GxE Interaction to Optimize Multi-Trait Selection in Lima Bean"
 date: "`r Sys.Date()`"
 author: "João Paulo Silva Pavan"
-format:
-  pdf: default
-  gfm: default
-pdf-engine: xelatex
+format: html
 editor: visual
-execute:
-  message: false
-  warning: false
 editor_options: 
   chunk_output_type: console
 ---
 
-## Authors
-
-**Gérson N. C. Ferreira¹†**, **João P. S. Pavan¹†**, **Mauricio S. Araújo¹**, **Dayana R. Sousa¹**,\
-**Michelle S. Nascimento²**, **Vanessa G. Moura²**, **José T. Chagas¹**, **Yasmin I. Retore¹**,\
-**Josieli L. Silva²**, **Maria S. S. Silva²**, **Regina L. F. Gomes²**, **Ângela C. A. Lopes²**,\
-**Maria I. Zucchi³˒⁴**, **José B. Pinheiro¹**
-
-† These authors contributed equally to this work.
-
-### Affiliations
-
-1.  Genetics Diversity and Breeding Laboratory, Department of Genetics, “Luiz de Queiroz” College of Agriculture (ESALQ/USP), Piracicaba, São Paulo, Brazil\
-2.  Department of Plant Science, Federal University of Piauí (UFPI), Teresina, Piauí, Brazil\
-3.  Conservation Genetics and Genomics Group, Department of Genetics, ESALQ/USP, Piracicaba, São Paulo, Brazil\
-4.  Secretariat of Agriculture and Food Supply of São Paulo State, Piracicaba, São Paulo, Brazil
-
-------------------------------------------------------------------------
-
 ```{r}
-#| message: false
-#| warning: false
-library(tinytex)
 library(reshape2)
 library(ggplot2)
 library(openxlsx)
@@ -45,7 +18,6 @@ library(tibble)
 library(ggplot2)
 library(metan)
 library(writexl)
-library(ggpubr)
 ```
 
 ## Lima Bean Data
@@ -76,7 +48,7 @@ library(ggpubr)
     |        Seed Width        |   SW    |  mm   |
 
 ```{r}
-LB = read.xlsx("C://Users//joaop//Desktop//fava//LimaBean.xlsx")
+LB = read.xlsx("Data//LimaBean.xlsx")
 LB$Block    <- as.factor(LB$Block)
 LB$Env    <- as.factor(LB$Env)
 LB$Genotype <- as.factor(LB$Genotype)
@@ -99,18 +71,98 @@ hist(LB$GY)
 hist(LB$OHSW)
 ```
 
-## anova
 
+## Anova
 ```{r}
-#| eval: false
 aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
 ```
+
+
+## Single environment analyses
+```{r}
+
+data.list = split(LB, f = LB$Env)
+vccomp=list()
+for (j in names(data.list)) {
+
+   x = droplevels(data.list[[j]])
+  cat("====> Environment:", j, fill = TRUE)
+
+st <- gamem(x,
+             gen = GEN,
+             rep =  Block,
+             resp = everything())
+st
+vccomp[[j]]=get_model_data(st, "vcomp")
+vccomp[[j]]$env=j
+
+}
+
+```
+
+```{r}
+custom_palette=viridis::turbo(n = 19)
+vc=do.call(rbind,vccomp)
+colnames(vc)
+traits=colnames(vc[,2:13])
+vc_long <- reshape2::melt(vc, measure.vars = traits, variable.name = "trait")
+
+vc_long$effect =paste(vc_long$Group,vc_long$env, sep = "_")
+
+vcp <- vc_long |> 
+  ggplot(aes(x = Group, y = value, fill = effect)) + 
+  geom_col(position = "stack", just = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(face = "bold")) + 
+  facet_wrap(~trait, scales = "free") +
+  labs(x = "Effects", y = "Variance components", fill = "Effects") +
+  scale_fill_manual(
+    values = custom_palette,  # Use the same labels as in the factor
+  )
+vcp
+ggsave(plot=vcp,device = "pdf",filename ="Plots/varcomp.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=vcp,device = "png",filename ="Plots/varcomp.png",dpi = "retina",height = 6,width = 8,bg = "white")
+```
+
 
 ## Mixed-effect models
 
 ```{r}
-mixedmodel <- gamem_met(LB,env = Env, gen = GEN, rep = Block,random = "all",resp = everything())
+
+mixedmodel <- gamem_met(LB,env = Env, gen = GEN, rep = Block,random = "gen" ,resp = everything())
+
 ```
+
+```{r}
+custom_palette=viridis::turbo(n = 6)
+
+
+vc=do.call(rbind,vccomp)
+colnames(vc)
+traits=c("GY","OHSW","NDF","NDM","PH","PN")
+
+vc_long <- reshape2::melt(vc, measure.vars = traits, variable.name = "trait")
+
+vc_long$effect =paste(vc_long$Group,vc_long$env, sep = "_")
+
+
+
+
+vcp <- vc_long  |> 
+  ggplot(aes(x = Group, y = value, fill = effect)) + 
+  geom_col(position = "stack", just = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(face = "bold")) + 
+  facet_wrap(~trait, scales = "free") +
+  labs(x = "Effects", y = "Variance components", fill = "Effects") +
+  scale_fill_manual(
+    values = custom_palette,  # Use the same labels as in the factor
+  )
+vcp
+ggsave(plot=vcp,device = "pdf",filename ="Plots/varcomp.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=vcp,device = "png",filename ="Plots/varcomp.png",dpi = "retina",height = 6,width = 8,bg = "white")
+```
+
 
 #### LRT
 
@@ -130,12 +182,13 @@ LRT = list(
   PN_LRT   = PNLRT
 )
 LRT
-```
-
-```{r}
-#| eval: false
 write_xlsx(LRT, "LRT_LB.xlsx")
 ```
+
+
+
+
+
 
 #### BLUPs
 
@@ -148,14 +201,11 @@ BLUPgen = list(
   PH_BLUP   = mixedmodel$PH$BLUPgen,
   PN_BLUP   = mixedmodel$PN$BLUPgen
 )
-```
-
-```{r}
-#| eval: false
 write_xlsx(BLUPgen, "BLUPgen_LB.xlsx")
 ```
 
 ```{r}
+
 library(dplyr)
 library(tibble)
 
@@ -170,8 +220,52 @@ ebvMat <- data.frame(
 ) |>
   column_to_rownames("GEN") |>
   as.matrix()
+
 dim(ebvMat)
 head(ebvMat)
+save(ebvMat,file = "Data/ebvMat.rda")
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+plot_trait_bar <- function(x, trait_name, size.tex.lab = 12) {
+  
+  df <- x[[trait_name]]$BLUPgen %>%
+    mutate(
+      Status = ifelse(Predicted < mean(Predicted, na.rm = TRUE), "Below", "Above")
+    )
+  
+  df$Status <- factor(df$Status, levels = c("Below", "Above"))
+  
+  df <- df %>%
+    arrange(Predicted) %>%
+    mutate(GEN = factor(GEN, levels = GEN))
+  
+  ggplot(df, aes(x = GEN, y = Predicted, fill = Status)) +
+    geom_col(color = "white", alpha = 0.4) +
+    scale_fill_manual(values = c("Above" = "purple","Below" = "orange")) +
+    coord_flip() +
+    labs(
+      x = "Ranking Genotypes",
+      y = paste(trait_name)
+    ) +
+    theme_classic(base_size = 12) +
+    theme(
+      axis.text.y = element_text(size = 12),
+      legend.position = "right"
+    )
+}
+traits <- c("GY", "OHSW", "PH", "PN", "NDF", "NDM")
+BLUP_bar_plots <- lapply(traits, function(trait) plot_trait_bar(mixedmodel, trait))
+```
+
+```{r}
+library(ggpubr)
+blups_panel3 = ggarrange(BLUP_bar_plots[[1]], BLUP_bar_plots[[2]], BLUP_bar_plots[[3]], BLUP_bar_plots[[4]], BLUP_bar_plots[[5]], BLUP_bar_plots[[6]], ncol = 3, nrow = 2, common.legend = T, legend = "bottom", labels = c("A", "B", "C", "D", "E", "F"), font.label = list(size = 10, face = "bold"))
+blups_panel3
+ggsave("BLUPs_LB.pdf",blups_panel3,width = 12, height = 14, dpi = 600)
 ```
 
 ```{r}
@@ -214,11 +308,10 @@ traits <- c("GY", "OHSW", "PH", "PN", "NDF", "NDM")
 BLUP_heatmaps <- lapply(traits, function(trait) {
   plot_trait_heatmap(mixedmodel, trait)
 })
+BLUP_heatmaps
 ```
 
 ```{r}
-#| fig-width: 14
-#| fig-height: 12
 blups_heatmap_panel <- ggarrange(
   plotlist = BLUP_heatmaps,
   ncol = 2, nrow = 3,
@@ -241,8 +334,18 @@ ggsave(
 #### Correlation
 
 ```{r}
-#| message: false
-#| warning: false
+library(ggpubr)
+corr = corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW)
+corrplot = plot(corr) +
+  scale_fill_gradientn(
+    colours = c("orange", "white", "purple"),
+    limits = c(-1, 1)
+  )
+corrplot
+#ggsave("Correlation.pdf",corrplot, width = 4, height = 4, dpi = 600)
+```
+
+```{r}
 corrplot = plot(
   corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW),
   type = "upper",
@@ -266,10 +369,6 @@ corrplot = plot(
   size.text.lab = 14
 )
 corrplot
-```
-
-```{r}
-#| eval: false
 ggsave("Correlation.pdf",corrplot, width = 7, height = 6, dpi = 600)
 ```
 
@@ -287,20 +386,60 @@ gtb1plot = plot(gtb1,
             repulsion = 1,
             col.line = "orange",
             plot_theme = theme_metan_minimal())
+ggsave("Genotypebytraitbiplot_LB.pdf",gtb1plot, width = 8, height = 8, dpi = 600)
 ```
 
+##### Correlation + GYT
+
 ```{r}
-#| eval: false
-ggsave("Genotypebytraitbiplot_LB.pdf",gtb1plot, width = 8, height = 8, dpi = 600)
+lbplotcorrgyt = ggarrange(corrplot,gtb1plot, ncol = 2, nrow = 1, labels = c("A","B"), font.label = list(size = 10, face = "bold"))
+lbplotcorrgyt
+ggsave("Correlation_GYT_LB.pdf",lbplotcorrgyt,width = 12, height = 6, dpi = 600)
 ```
 
 #### Which-won-Where
 
 ```{r}
-#| fig-width: 10
-#| fig-height: 14
-#| message: false
-#| warning: false
+dir.create("Which_won_where", showWarnings = FALSE)
+
+# Loop por trait
+for(tr in traits){
+  
+  # Calcular GGE para o trait
+  gge3_tr <- gge(
+    LB,
+    Env,
+    GEN,
+    resp = tr,
+    svp = "symmetrical"
+  )
+  
+  # Plot type 3 (Which-won-where)
+  p <- plot(gge3_tr,
+            type = 3,
+            col.env = "orange",
+            col.gen = "purple",
+            arrow.color = "purple",
+            size.text.gen = 2,
+            size.text.env = 5,
+            size.shape.win = 4,
+            large_label = 6,
+            repel = TRUE,
+            size.text.win = 4.5,
+            repulsion = 2,
+            col.line = "orange",
+            plot_theme = theme_metan_minimal())
+    ggsave(
+    filename = paste0("Which_won_where/", tr, "_WhichWonWhere.pdf"),
+    plot = p,
+    width = 10,
+    height = 8,
+    dpi = 600
+    )}
+p
+```
+
+```{r}
 library(ggpubr)
 library(ggplot2)
 
@@ -342,7 +481,7 @@ for(tr in traits){
 www_lb <- ggarrange(
   www[["GY"]],  www[["OHSW"]], www[["PN"]],
   www[["PH"]],  www[["NDF"]],  www[["NDM"]],
-  ncol = 3, nrow = 2,
+  ncol = 2, nrow = 3,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold"),
@@ -357,21 +496,12 @@ www_lb <- annotate_figure(
   fig.lab = "",
   fig.lab.pos = "bottom"
 )
-www_lb
-```
-
-```{r}
-#| eval: false
 ggsave("Which-won-Where.pdf", www_lb, width = 10, height = 14, dpi = 600)
 ```
 
 #### Mean_performance vs. stability
 
 ```{r}
-#| message: false
-#| warning: false
-#| fig-width: 10
-#| fig-height: 14
 dir.create("Mean_performance_vs_stability", showWarnings = FALSE)
 
 mps_list <- list()
@@ -415,7 +545,7 @@ for(tr in traits){
 mps_panel <- ggarrange(
   mps_list[["GY"]],  mps_list[["OHSW"]], mps_list[["PN"]],
   mps_list[["PH"]],  mps_list[["NDF"]],  mps_list[["NDM"]],
-  ncol = 3, nrow = 2,
+  ncol = 2, nrow = 3,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold"),
@@ -428,21 +558,12 @@ mps_panel = annotate_figure(
   fig.lab = "",
   fig.lab.pos = "bottom"
 )
-mps_panel
-```
-
-```{r}
-#| eval: false
 ggsave("Mean Performance vs Stability_LB.pdf", mps_panel, width = 10, height = 14, dpi = 600)
 ```
 
 #### Discriminativeness vs. representativeness
 
 ```{r}
-#| message: false
-#| warning: false
-#| fig-width: 10
-#| fig-height: 14
 library(ggplot2)
 library(ggpubr)
 
@@ -491,7 +612,7 @@ for(tr in traits){
 dr_panel <- ggarrange(
   dr_list[["GY"]],  dr_list[["OHSW"]], dr_list[["PN"]],
   dr_list[["PH"]],  dr_list[["NDF"]],  dr_list[["NDM"]],
-  ncol = 3, nrow = 2,
+  ncol = 2, nrow = 3,
   common.legend = TRUE, legend = "bottom",
   labels = c("A","B","C","D","E","F"),
   font.label = list(size = 10, face = "bold"), 
@@ -507,11 +628,6 @@ dr_panel = annotate_figure(
   fig.lab = "",
   fig.lab.pos = "bottom"
 )
-dr_panel
-```
-
-```{r}
-#| eval: false
 ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 10, height = 14, dpi = 600)
 ```
 
@@ -519,6 +635,7 @@ ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 10, 
 
 ```{r}
 # DESIRE INDEX FUNCTION
+
 gainDiff <- function(ebvMat, b_ebv, dGain, nSel){ 
   
   take <- order(ebvMat %*% b_ebv, decreasing = TRUE)[1:nSel]
@@ -531,22 +648,22 @@ gainDiff <- function(ebvMat, b_ebv, dGain, nSel){
 }
 ```
 
+
 ```{r}
-#| message: false
-#| warning: false
 ebvMat <- ebvMat[complete.cases(ebvMat), ]
 #COV MATRIX -EBVS
 library(AlphaSimR)
 
 G_ebv <- AlphaSimR::popVar(ebvMat)
 G_ebv
+
 ```
 
 ```{r}
 #desired gains
 desiredGain <- c(
   GY   =  2,
-  OHSW =  0,
+  OHSW =  1,
   NDF  = -1,
   NDM  = -1,
   PH   =  0,
@@ -584,10 +701,6 @@ DesireIndex <- data.frame(
   arrange(desc(DesireIndex))
 
 head(DesireIndex, 10)
-```
-
-```{r}
-#| eval: false
 write.xlsx(DesireIndex, "Desireindex.xlsx")
 ```
 
@@ -609,7 +722,6 @@ df_vect = cbind(
 ```
 
 ```{r}
-#| eval: false
 ggplot(df_vec, aes(x = Desired, y = Achieved)) +
   geom_point(size = 3, color = "purple") +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
@@ -624,6 +736,7 @@ ggplot(df_vec, aes(x = Desired, y = Achieved)) +
 
 ```{r}
 library(dplyr)
+
 df <- dplyr::arrange(DesireIndex, dplyr::desc(DesireIndex)) |>
   dplyr::mutate(
     GEN = factor(GEN, levels = GEN),
@@ -658,14 +771,9 @@ desiredgainplot = ggplot(df, aes(x = GEN, y = DesireIndex, fill = Selected)) +
     plot.title = element_text(face = "bold", hjust = 0.5),
     legend.position = "bottom"
   )
-```
-
-```{r}
-#| eval: false
+desiredgainplot
 ggsave("desiredgainplot_LB.pdf", plot = desiredgainplot,width = 10, height = 8,dpi = 600)
 ```
-
-### Table Selection Gain
 
 ```{r}
 h2_df <- gmd(mixedmodel, "h2")
@@ -714,11 +822,17 @@ Table3_DesireIndex
 ```
 
 ```{r}
-#| eval: false
-write.xlsx(Table3_DesireIndex, "Table3_DesireIndex.xlsx", rowNames = FALSE)
+library(knitr)
+
+tableDesire =kable(
+  Table3_DesireIndex,
+  caption = "Predicted genetic gain applying the Desire Index based on genotypic BLUPs."
+)
 ```
 
-## Genotype by trait biplot
+```{r}
+write.xlsx(Table3_DesireIndex, "Table3_DesireIndex.xlsx", rowNames = FALSE)
+```
 
 ```{r}
 gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PN, GY, OHSW))
@@ -731,15 +845,10 @@ gtb1plot = plot(gtb1,
             repulsion = 2,
             col.line = "orange",
             plot_theme = theme_metan())
+gtb1plot
 ```
 
-### Panel Desire Gain Index + GYT Biplot
-
 ```{r}
-#| message: false
-#| warning: false
-#| fig-width: 12
-#| fig-height: 6
 gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
   ncol = 2,
   common.legend = F, legend = "bottom",
@@ -749,18 +858,11 @@ gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
   hjust = -0.5,
   vjust = 1.5
 )
-gt_desired_panel
-```
 
-```{r}
-#| eval: false
 ggsave("gt_desired_panel_LB.pdf", plot = gt_desired_panel, width = 12, height = 6,dpi = 600)
 ```
 
-## Density plot
-
 ```{r}
-if ("package:plyr" %in% search()) detach("package:plyr", unload = TRUE)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -776,7 +878,7 @@ trait_names <- c(
 df_long <- bind_rows(
   lapply(names(BLUPgen), function(tr) {
     BLUPgen[[tr]] %>%
-      dplyr::mutate(
+      mutate(
         Trait  = trait_names[tr],
         Status = ifelse(GEN %in% selected$GEN,
                         "Selected", "Not Selected")
@@ -792,12 +894,6 @@ df_long$Trait <- factor(
 
 ### Density plot
 ```{r}
-<<<<<<< HEAD
-#| fig-width: 12
-#| fig-height: 10
-plot_density_SG <- function(data_trait, selected, xlab, bw = NULL) {
-  
-=======
 BLUPgen=readxl::read_xlsx("BLUPgen_LB.xlsx",)
 str(BLUPgen)
 all_sheets <- readxl::excel_sheets("BLUPgen_LB.xlsx")
@@ -817,9 +913,8 @@ selected
 plot_density_SG <- function(data_trait, selected, xlab) {
   require(dplyr)
   require(ggplot2)
->>>>>>> 1145223f38336ba320db0ea956cddc2a0a6babcf
   df <- data_trait %>%
-    dplyr::mutate(
+    mutate(
       Status = factor(
         ifelse(GEN %in% selected$GEN, "Selected", "Not Selected"),
         levels = c("Not Selected", "Selected")
@@ -827,7 +922,7 @@ plot_density_SG <- function(data_trait, selected, xlab) {
     )
   
   ggplot(df, aes(x = Predicted, fill = Status)) +
-    geom_density(alpha = 0.6, color = "black", linewidth = 0.4, bw = bw) +
+    geom_density(alpha = 0.6, color = "black", linewidth = 0.4) +
     
     scale_fill_manual(
       values = c("Not Selected" = "#FFE5B4",
@@ -851,28 +946,25 @@ plot_density_SG <- function(data_trait, selected, xlab) {
 library(patchwork)
 
 pd1 <- plot_density_SG(BLUPgen$GY_BLUP, selected,
-<<<<<<< HEAD
-                      expression(bold("GY (kg ha"^{-1}*")")), bw = 100)
-=======
                       expression(bold("GY (kg ha"^{-1}*")")))+    geom_density(alpha = 0.6, color = "black", linewidth = 0.4,adjust=10);pd1 
->>>>>>> 1145223f38336ba320db0ea956cddc2a0a6babcf
 
 pd2 <- plot_density_SG(BLUPgen$OHSW_BLUP, selected,
-                      expression(bold("OHSW (g)")), bw = 2.5)
+                      expression(bold("OHSW (g)")))
 
 pd3 <- plot_density_SG(BLUPgen$NDF_BLUP, selected,
-                      expression(bold("NDF (days)")), bw = 3)
+                      expression(bold("NDF (days)")))
 
 pd4 <- plot_density_SG(BLUPgen$NDM_BLUP, selected,
-                      expression(bold("NDM (days)")), bw = 3.5)
+                      expression(bold("NDM (days)")))
 
 pd5 <- plot_density_SG(BLUPgen$PH_BLUP, selected,
-                      expression(bold("PH (cm)")), bw = 0.5)
+                      expression(bold("PH (cm)")))
 
 pd6 <- plot_density_SG(BLUPgen$PN_BLUP, selected,
-                      expression(bold("Pod Number")), bw = 65)
-densplot = (pd1 | pd2 | pd3) /
-(pd4 | pd5 | pd6) +
+                      expression(bold("Pod Number")))
+densplot = (pd1 | pd2) /
+(pd3 | pd4) /
+(pd5 | pd6) +
   plot_annotation(
     tag_levels = "A",
     theme = theme(
@@ -884,9 +976,8 @@ densplot = (pd1 | pd2 | pd3) /
   ) +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
-densplot
 ```
 
 ```{r}
-ggsave(plot = densplot, "densplot.pdf", width = 12, height = 10, dpi = 600)
+ggsave(plot = densplot, "densplot.pdf", width = 14, height = 12, dpi = 600)
 ```

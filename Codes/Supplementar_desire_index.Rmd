@@ -1,0 +1,137 @@
+---
+title: "Leveraging G×E interaction to optimize multi-trait selection in Lima Bean"
+author:
+  - Gérson N.C. Ferreira$^1$†*
+  - João P.S. Pavan$^1$†
+  - Mauricio S. Araújo$^1$
+  - Dayana R. Sousa$^1$
+  - Michelle S. Nascimento$^2$
+  - Vanessa G. Moura$^2$
+  - José T. B. Chagas$^1$
+  - Yasmim I. Retore$^1$
+  - Josieli L. Silva$^2$
+  - Maria S. S. Silva$^2$
+  - Regina L.F. Gomes$^2$
+  - Ângela C.A. Lopes$^2$
+  - Maria I. Zucchi$^{3,4}$
+  - José B. Pinheiro$^1$*
+date: "2026-05-05"
+output:
+  pdf_document:
+    keep_tex: true
+    fig_caption: true
+    number_sections: true
+geometry: "left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm"
+fontsize: 12pt
+linestretch: 1.5
+editor_options:
+  chunk_output_type: console
+---
+
+
+**Affiliations:**
+
+**$^1$** Genetics Diversity and Breeding Laboratory, Department of Genetics, "Luiz de Queiroz" College of Agriculture (ESALQ/USP), Piracicaba, São Paulo, Brazil
+
+**$^2$** Department of Plant Science, Federal University of Piauí, Teresina, Piauí, Brazil
+
+**$^3$** Conservation Genetics and Genomics Group, Department of Genetics, "Luiz de Queiroz" College of Agriculture (ESALQ), University of São Paulo (USP), Piracicaba, São Paulo, Brazil
+
+**$^4$** Secretariat of Agriculture and Food Supply of São Paulo State, Piracicaba, São Paulo, Brazil
+
+\vspace{0.5cm}
+
+ *Corresponding authors* * gerson.nascimento@live.com (G.N.C. Ferreira) and jbaldin@usp.br (J.B. Pinheiro)
+
+† *These authors contributed equally to this work*
+
+\newpage
+
+
+```{r}
+load("../Data/ebvMat.rda")
+
+
+```
+
+
+
+# Desire index
+
+```{r}
+# DESIRE INDEX FUNCTION
+
+gainDiff <- function(ebvMat, b_ebv, dGain, nSel){ 
+  
+  take <- order(ebvMat %*% b_ebv, decreasing = TRUE)[1:nSel]
+  
+  mu_Sel <- colMeans(ebvMat[take, ])
+  resp   <- mu_Sel - colMeans(ebvMat)
+  resp   <- resp / sqrt(sum(resp^2))
+  
+  sum((resp - dGain)^2)
+}
+```
+
+
+```{r}
+ebvMat <- ebvMat[complete.cases(ebvMat), ]
+#COV MATRIX -EBVS
+library(AlphaSimR)
+
+G_ebv <- AlphaSimR::popVar(ebvMat)
+G_ebv
+
+
+```
+
+```{r}
+#desired gains
+desiredGain <- c(
+  GY   =  2,
+  OHSW =  1,
+  NDF  = -1,
+  NDM  = -1,
+  PH   =  0,
+  PN   =  1
+)
+desiredGain <- desiredGain / sqrt(sum(desiredGain^2))
+sum(desiredGain^2)
+```
+
+```{r}
+b_ebv <- solve(G_ebv) %*% desiredGain
+b_ebv
+```
+
+```{r}
+nSel <- 5
+opt <- optim(
+  par     = b_ebv,
+  fn      = gainDiff,
+  ebvMat  = ebvMat,
+  dGain   = desiredGain,
+  nSel    = nSel
+)
+opt_weights <- opt$par
+opt_weights
+```
+
+```{r}
+DesireIndex <- ebvMat %*% opt_weights
+
+DesireIndex <- data.frame(
+  GEN = rownames(ebvMat),
+  DesireIndex = as.numeric(DesireIndex)
+) |>
+  dplyr::arrange(desc(DesireIndex))
+
+head(DesireIndex, 10)
+
+```
+
+```{r}
+selected <- DesireIndex[1:5, ]
+selected
+```
+

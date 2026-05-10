@@ -1,0 +1,311 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+  12pt,
+]{article}
+\usepackage{xcolor}
+\usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{5}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage{setspace}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Leveraging G×E interaction to optimize multi-trait selection in Lima Bean},
+  pdfauthor={Gérson N.C. Ferreira\^{}1†*; João P.S. Pavan\^{}1†; Mauricio S. Araújo\^{}1; Dayana R. Sousa\^{}1; Michelle S. Nascimento\^{}2; Vanessa G. Moura\^{}2; José T. B. Chagas\^{}1; Yasmim I. Retore\^{}1; Josieli L. Silva\^{}2; Maria S. S. Silva\^{}2; Regina L.F. Gomes\^{}2; Ângela C.A. Lopes\^{}2; Maria I. Zucchi\^{}\{3,4\}; José B. Pinheiro\^{}1*},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Leveraging G×E interaction to optimize multi-trait selection in
+Lima Bean}
+\author{Gérson N.C. Ferreira\(^1\)†* \and João P.S.
+Pavan\(^1\)† \and Mauricio S. Araújo\(^1\) \and Dayana R.
+Sousa\(^1\) \and Michelle S. Nascimento\(^2\) \and Vanessa G.
+Moura\(^2\) \and José T. B. Chagas\(^1\) \and Yasmim I.
+Retore\(^1\) \and Josieli L. Silva\(^2\) \and Maria S. S.
+Silva\(^2\) \and Regina L.F. Gomes\(^2\) \and Ângela C.A.
+Lopes\(^2\) \and Maria I. Zucchi\(^{3,4}\) \and José B. Pinheiro\(^1\)*}
+\date{2026-05-05}
+
+\begin{document}
+\maketitle
+
+\setstretch{1.5}
+\textbf{Affiliations:}
+
+\textbf{\(^1\)} Genetics Diversity and Breeding Laboratory, Department
+of Genetics, ``Luiz de Queiroz'' College of Agriculture (ESALQ/USP),
+Piracicaba, São Paulo, Brazil
+
+\textbf{\(^2\)} Department of Plant Science, Federal University of
+Piauí, Teresina, Piauí, Brazil
+
+\textbf{\(^3\)} Conservation Genetics and Genomics Group, Department of
+Genetics, ``Luiz de Queiroz'' College of Agriculture (ESALQ), University
+of São Paulo (USP), Piracicaba, São Paulo, Brazil
+
+\textbf{\(^4\)} Secretariat of Agriculture and Food Supply of São Paulo
+State, Piracicaba, São Paulo, Brazil
+
+\vspace{0.5cm}
+
+\emph{Corresponding authors} *
+\href{mailto:gerson.nascimento@live.com}{\nolinkurl{gerson.nascimento@live.com}}
+(G.N.C. Ferreira) and
+\href{mailto:jbaldin@usp.br}{\nolinkurl{jbaldin@usp.br}} (J.B. Pinheiro)
+
+† \emph{These authors contributed equally to this work}
+
+\newpage
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{load}\NormalTok{(}\StringTok{"../Data/ebvMat.rda"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Desire index}\label{desire-index}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# DESIRE INDEX FUNCTION}
+
+\NormalTok{gainDiff }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(ebvMat, b\_ebv, dGain, nSel)\{ }
+  
+\NormalTok{  take }\OtherTok{\textless{}{-}} \FunctionTok{order}\NormalTok{(ebvMat }\SpecialCharTok{\%*\%}\NormalTok{ b\_ebv, }\AttributeTok{decreasing =} \ConstantTok{TRUE}\NormalTok{)[}\DecValTok{1}\SpecialCharTok{:}\NormalTok{nSel]}
+  
+\NormalTok{  mu\_Sel }\OtherTok{\textless{}{-}} \FunctionTok{colMeans}\NormalTok{(ebvMat[take, ])}
+\NormalTok{  resp   }\OtherTok{\textless{}{-}}\NormalTok{ mu\_Sel }\SpecialCharTok{{-}} \FunctionTok{colMeans}\NormalTok{(ebvMat)}
+\NormalTok{  resp   }\OtherTok{\textless{}{-}}\NormalTok{ resp }\SpecialCharTok{/} \FunctionTok{sqrt}\NormalTok{(}\FunctionTok{sum}\NormalTok{(resp}\SpecialCharTok{\^{}}\DecValTok{2}\NormalTok{))}
+  
+  \FunctionTok{sum}\NormalTok{((resp }\SpecialCharTok{{-}}\NormalTok{ dGain)}\SpecialCharTok{\^{}}\DecValTok{2}\NormalTok{)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ebvMat }\OtherTok{\textless{}{-}}\NormalTok{ ebvMat[}\FunctionTok{complete.cases}\NormalTok{(ebvMat), ]}
+\CommentTok{\#COV MATRIX {-}EBVS}
+\FunctionTok{library}\NormalTok{(AlphaSimR)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loading required package: R6
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{G\_ebv }\OtherTok{\textless{}{-}}\NormalTok{ AlphaSimR}\SpecialCharTok{::}\FunctionTok{popVar}\NormalTok{(ebvMat)}
+\NormalTok{G\_ebv}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##            [,1]       [,2]       [,3]       [,4]       [,5]       [,6]
+## [1,] 6587.97833 217.258861 424.765720 256.943342 36.6766871 4080.22632
+## [2,]  217.25886   7.323476  14.181373   8.521450  1.2173849  134.59974
+## [3,]  424.76572  14.181373  28.804036  17.134163  2.4397036  266.63926
+## [4,]  256.94334   8.521450  17.134163  10.367730  1.4703171  160.61068
+## [5,]   36.67669   1.217385   2.439704   1.470317  0.2129143   22.92692
+## [6,] 4080.22632 134.599743 266.639262 160.610683 22.9269219 2564.70381
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#desired gains}
+\NormalTok{desiredGain }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
+  \AttributeTok{GY   =}  \DecValTok{2}\NormalTok{,}
+  \AttributeTok{OHSW =}  \DecValTok{1}\NormalTok{,}
+  \AttributeTok{NDF  =} \SpecialCharTok{{-}}\DecValTok{1}\NormalTok{,}
+  \AttributeTok{NDM  =} \SpecialCharTok{{-}}\DecValTok{1}\NormalTok{,}
+  \AttributeTok{PH   =}  \DecValTok{0}\NormalTok{,}
+  \AttributeTok{PN   =}  \DecValTok{1}
+\NormalTok{)}
+\NormalTok{desiredGain }\OtherTok{\textless{}{-}}\NormalTok{ desiredGain }\SpecialCharTok{/} \FunctionTok{sqrt}\NormalTok{(}\FunctionTok{sum}\NormalTok{(desiredGain}\SpecialCharTok{\^{}}\DecValTok{2}\NormalTok{))}
+\FunctionTok{sum}\NormalTok{(desiredGain}\SpecialCharTok{\^{}}\DecValTok{2}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 1
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{b\_ebv }\OtherTok{\textless{}{-}} \FunctionTok{solve}\NormalTok{(G\_ebv) }\SpecialCharTok{\%*\%}\NormalTok{ desiredGain}
+\NormalTok{b\_ebv}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##             [,1]
+## [1,] -0.07014002
+## [2,]  2.70032556
+## [3,] -0.38420756
+## [4,] -2.08437923
+## [5,]  8.33887739
+## [6,]  0.06593790
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{nSel }\OtherTok{\textless{}{-}} \DecValTok{5}
+\NormalTok{opt }\OtherTok{\textless{}{-}} \FunctionTok{optim}\NormalTok{(}
+  \AttributeTok{par     =}\NormalTok{ b\_ebv,}
+  \AttributeTok{fn      =}\NormalTok{ gainDiff,}
+  \AttributeTok{ebvMat  =}\NormalTok{ ebvMat,}
+  \AttributeTok{dGain   =}\NormalTok{ desiredGain,}
+  \AttributeTok{nSel    =}\NormalTok{ nSel}
+\NormalTok{)}
+\NormalTok{opt\_weights }\OtherTok{\textless{}{-}}\NormalTok{ opt}\SpecialCharTok{$}\NormalTok{par}
+\NormalTok{opt\_weights}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##             [,1]
+## [1,] -0.06570972
+## [2,]  2.70035237
+## [3,] -0.38474376
+## [4,] -2.08393017
+## [5,]  8.33759052
+## [6,]  0.06765372
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{DesireIndex }\OtherTok{\textless{}{-}}\NormalTok{ ebvMat }\SpecialCharTok{\%*\%}\NormalTok{ opt\_weights}
+
+\NormalTok{DesireIndex }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}
+  \AttributeTok{GEN =} \FunctionTok{rownames}\NormalTok{(ebvMat),}
+  \AttributeTok{DesireIndex =} \FunctionTok{as.numeric}\NormalTok{(DesireIndex)}
+\NormalTok{) }\SpecialCharTok{|\textgreater{}}
+\NormalTok{  dplyr}\SpecialCharTok{::}\FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(DesireIndex))}
+
+\FunctionTok{head}\NormalTok{(DesireIndex, }\DecValTok{10}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    GEN DesireIndex
+## 1  L06    234.5246
+## 2  L27    234.2351
+## 3  L21    233.6062
+## 4  L20    233.5220
+## 5  L13    233.4020
+## 6  L34    233.3338
+## 7  L14    232.8109
+## 8  L11    232.7500
+## 9  L25    232.4086
+## 10 L12    232.2843
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{selected }\OtherTok{\textless{}{-}}\NormalTok{ DesireIndex[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{5}\NormalTok{, ]}
+\NormalTok{selected}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   GEN DesireIndex
+## 1 L06    234.5246
+## 2 L27    234.2351
+## 3 L21    233.6062
+## 4 L20    233.5220
+## 5 L13    233.4020
+\end{verbatim}
+
+\end{document}
