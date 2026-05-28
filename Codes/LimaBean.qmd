@@ -20,6 +20,15 @@ library(metan)
 library(writexl)
 ```
 
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+  knitr::opts_knit$set(root.dir = "../")
+```
+
+
+
 ## Lima Bean Data
 
 -   3 Locations (Brazil) - Piracicaba - SP, Teresina - PI, Tianguá - CE,
@@ -83,6 +92,8 @@ aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
 
 data.list = split(LB, f = LB$Env)
 vccomp=list()
+herit=list()
+j="Piracicaba"
 for (j in names(data.list)) {
 
    x = droplevels(data.list[[j]])
@@ -95,10 +106,13 @@ st <- gamem(x,
 st
 vccomp[[j]]=get_model_data(st, "vcomp")
 vccomp[[j]]$env=j
-
+herit[[j]]=get_model_data(st, "h2")
+herit[[j]]$env=j
 }
 
 ```
+
+### Variance components
 
 ```{r}
 custom_palette=viridis::turbo(n = 19)
@@ -124,6 +138,30 @@ ggsave(plot=vcp,device = "pdf",filename ="Plots/varcomp.pdf",dpi = "retina",heig
 ggsave(plot=vcp,device = "png",filename ="Plots/varcomp.png",dpi = "retina",height = 6,width = 8,bg = "white")
 ```
 
+### Heritability broad-sense
+
+```{r}
+custom_palette=viridis::turbo(n = 19)
+her=do.call(rbind,herit)
+colnames(her)
+
+
+heritp <- her |> 
+  ggplot(aes(x = VAR, y = h2, fill = env)) + 
+  geom_col(position = "stack", just = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(face = "bold")) + 
+  facet_wrap(~env, scales = "free") +
+  labs(x = "Traits", y = "Broad-sense heritability", fill = "Environments") +
+  scale_fill_manual(
+    values = custom_palette,  # Use the same labels as in the factor
+  )
+heritp
+ggsave(plot=heritp,device = "pdf",filename ="Plots/herit.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=heritp,device = "png",filename ="Plots/herit.png",dpi = "retina",height = 6,width = 8,bg = "white")
+```
+
+
 
 ## Mixed-effect models
 
@@ -133,35 +171,115 @@ mixedmodel <- gamem_met(LB,env = Env, gen = GEN, rep = Block,random = "gen" ,res
 
 ```
 
+## Heritabilit broad-sense met
 ```{r}
-custom_palette=viridis::turbo(n = 6)
+herit_met=get_model_data(mixedmodel, "h2")
 
-
-vc=do.call(rbind,vccomp)
-colnames(vc)
-traits=c("GY","OHSW","NDF","NDM","PH","PN")
-
-vc_long <- reshape2::melt(vc, measure.vars = traits, variable.name = "trait")
-
-vc_long$effect =paste(vc_long$Group,vc_long$env, sep = "_")
-
-
-
-
-vcp <- vc_long  |> 
-  ggplot(aes(x = Group, y = value, fill = effect)) + 
+custom_palette=viridis::turbo(n = 12)
+heritp2 <- herit_met |> 
+  ggplot(aes(x = VAR, y = h2, fill=VAR)) + 
   geom_col(position = "stack", just = 0.5) + 
   theme(axis.text.x = element_text(angle = 90), 
-        strip.text = element_text(face = "bold")) + 
-  facet_wrap(~trait, scales = "free") +
-  labs(x = "Effects", y = "Variance components", fill = "Effects") +
+        strip.text = element_text(face = "bold")) +
+  labs(x = "Traits", y = "Broad-sense heritability",fill = "Traits") +
   scale_fill_manual(
     values = custom_palette,  # Use the same labels as in the factor
   )
-vcp
-ggsave(plot=vcp,device = "pdf",filename ="Plots/varcomp.pdf",dpi = "retina",height = 6,width = 8)
-ggsave(plot=vcp,device = "png",filename ="Plots/varcomp.png",dpi = "retina",height = 6,width = 8,bg = "white")
+heritp2
+
+ggsave(plot=heritp2,device = "pdf",filename ="Plots/herit_met.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=heritp2,device = "png",filename ="Plots/herit_met.png",dpi = "retina",height = 6,width = 8,bg = "white")
 ```
+
+```{r}
+ls()
+library(asreml)
+
+her=NULL
+# traits=colnames(LB[,5:16])
+
+table(LB[LB$Env=="Tiangua","PH"])
+
+
+md=mean(LB[LB$Env=="Tiangua","PH"])
+std=sd(LB[LB$Env=="Tiangua","PH"])
+md-std*2.5;md+std*2.5
+table(LB[LB$Env=="Tiangua","PH"])
+LB[LB$Env=="Tiangua","PH"]>md+std*2.5
+LB[LB$Env=="Tiangua","PH"]<md-std*2.5
+
+LB[LB$Env=="Tiangua" & LB$PH == md+std*2.5  ,"PH"] <- NA
+hist(LB[,"PH"])
+table(LB[LB$Env=="Tiangua","PH"],useNA = "ifany")
+traits=c("PH", "NDF", "NDM", "OHSW", "PN", "GY")
+
+j=traits[6]
+unique(LB$Env)
+nrep=length(unique(LB$Block))
+
+
+# for (j in names(data.list)) {
+  
+  h2.mat = matrix(nrow = length(traits), ncol = 1,    dimnames = list(traits, c("H2_cul")))
+
+for (j in traits) {
+
+cat("====> Trait:", j, fill = TRUE)
+str(LB)
+head(LB)
+
+
+
+
+mod2 = asreml(fixed = LB[,j] ~ Block + Env,
+              random = ~ GEN  + GEN:idv(Env),
+              data = LB, maxiter=50,
+              na.action = na.method(x="exclude", y = "exclude"))
+
+ 
+summary(mod2)$varcomp
+mod2 = update(mod2)
+sum2 = summary(mod2)$varcomp
+aic2 = summary(mod2)$aic
+logl2 = summary(mod2)$loglik
+predm2_vcov = predict(mod2, classify = "GEN", vcov = T)
+predm2_sed = predict(mod2, classify = "GEN", sed = T)
+
+PEV = mean(diag(predm2_vcov$vcov)) 
+MVdelta = mean((predm2_sed$sed^2)[upper.tri(predm2_sed$sed^2,diag = F)]) 
+
+acc2 = sqrt(1-(PEV/sum2[1,1])) 
+her2 = 1-(MVdelta/(2*summary(mod2)$varcomp[1,1])) 
+
+her[[j]]$h2 <- her2
+}
+
+```
+
+## Culllis Heritability
+```{r}
+her_df <- data.frame(
+  trait = names(her),
+  h2 = unlist(her)
+)
+
+
+heritp_cul <- her_df |> 
+  ggplot(aes(x = trait, y = h2, fill = trait)) + 
+  geom_col(position = "stack",just = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(face = "bold")) + 
+  labs(x = "Traits", y = "Cullis heritability") +
+  scale_fill_manual(values = custom_palette)
+
+heritp_cul
+
+ggsave(plot=heritp,device = "pdf",filename ="Plots/herit_cul.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=heritp,device = "png",filename ="Plots/herit_cul.png",dpi = "retina",height = 6,width = 8,bg = "white")
+
+
+```
+
 
 
 #### LRT
