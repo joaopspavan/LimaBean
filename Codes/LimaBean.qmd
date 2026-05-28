@@ -200,18 +200,18 @@ her=NULL
 
 table(LB[LB$Env=="Tiangua","PH"])
 
-
-md=mean(LB[LB$Env=="Tiangua","PH"])
-std=sd(LB[LB$Env=="Tiangua","PH"])
-md-std*2.5;md+std*2.5
-table(LB[LB$Env=="Tiangua","PH"])
-LB[LB$Env=="Tiangua","PH"]>md+std*2.5
-LB[LB$Env=="Tiangua","PH"]<md-std*2.5
-
-LB[LB$Env=="Tiangua" & LB$PH == md+std*2.5  ,"PH"] <- NA
-hist(LB[,"PH"])
-table(LB[LB$Env=="Tiangua","PH"],useNA = "ifany")
-traits=c("PH", "NDF", "NDM", "OHSW", "PN", "GY")
+# 
+# md=mean(LB[LB$Env=="Tiangua","PH"])
+# std=sd(LB[LB$Env=="Tiangua","PH"])
+# md-std*2.5;md+std*2.5
+# table(LB[LB$Env=="Tiangua","PH"])
+# LB[LB$Env=="Tiangua","PH"]>md+std*2.5
+# LB[LB$Env=="Tiangua","PH"]<md-std*2.5
+# 
+# LB[LB$Env=="Tiangua" & LB$PH == md+std*2.5  ,"PH"] <- NA
+# hist(LB[,"PH"])
+# table(LB[LB$Env=="Tiangua","PH"],useNA = "ifany")
+# traits=c("PH", "NDF", "NDM", "OHSW", "PN", "GY")
 
 j=traits[6]
 unique(LB$Env)
@@ -220,7 +220,7 @@ nrep=length(unique(LB$Block))
 
 # for (j in names(data.list)) {
   
-  h2.mat = matrix(nrow = length(traits), ncol = 1,    dimnames = list(traits, c("H2_cul")))
+  # h2.mat = matrix(nrow = length(traits), ncol = 1,    dimnames = list(traits, c("H2_cul")))
 
 for (j in traits) {
 
