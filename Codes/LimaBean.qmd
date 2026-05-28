@@ -274,8 +274,8 @@ heritp_cul <- her_df |>
 
 heritp_cul
 
-ggsave(plot=heritp,device = "pdf",filename ="Plots/herit_cul.pdf",dpi = "retina",height = 6,width = 8)
-ggsave(plot=heritp,device = "png",filename ="Plots/herit_cul.png",dpi = "retina",height = 6,width = 8,bg = "white")
+ggsave(plot=heritp_cul,device = "pdf",filename ="Plots/herit_cul.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=heritp_cul,device = "png",filename ="Plots/herit_cul.png",dpi = "retina",height = 6,width = 8,bg = "white")
 
 
 ```
