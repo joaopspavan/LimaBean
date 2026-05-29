@@ -1,13 +1,38 @@
 ---
-title: "Leveraging GxE Interaction to Optimize Multi-Trait Selection in Lima Bean"
-date: "`r Sys.Date()`"
-author: "João Paulo Silva Pavan"
-format: html
-editor: visual
-editor_options: 
+title: "Leveraging G×E interaction to optimize multi-trait selection in Lima Bean"
+author:
+  - Gérson N.C. Ferreira$^1$†*
+  - João P.S. Pavan$^1$†
+  - Mauricio S. Araújo$^1$
+  - Dayana R. Sousa$^1$
+  - Michelle S. Nascimento$^2$
+  - Vanessa G. Moura$^2$
+  - José T. B. Chagas$^1$
+  - Yasmim I. Retore$^1$
+  - Josieli L. Silva$^2$
+  - Maria S. S. Silva$^2$
+  - Regina L.F. Gomes$^2$
+  - Ângela C.A. Lopes$^2$
+  - Maria I. Zucchi$^{3,4}$
+  - José B. Pinheiro$^1$*
+date: "2026-05-05"
+always_allow_html: yes
+output:
+  rmdformats::downcute:
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: false
+    highlight: tango
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    code_folding: show
+    embed-resources: true
+editor_options:
   chunk_output_type: console
 ---
-
+ 
 ```{r}
 library(reshape2)
 library(ggplot2)
@@ -29,7 +54,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 
-## Lima Bean Data
+# Lima Bean Data
 
 -   3 Locations (Brazil) - Piracicaba - SP, Teresina - PI, Tianguá - CE,
 
@@ -81,13 +106,13 @@ hist(LB$OHSW)
 ```
 
 
-## Anova
+# Anova
 ```{r}
 aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
 ```
 
 
-## Single environment analyses
+# Single environment analyses
 ```{r}
 
 data.list = split(LB, f = LB$Env)
@@ -112,7 +137,7 @@ herit[[j]]$env=j
 
 ```
 
-### Variance components
+# Variance components
 
 ```{r}
 custom_palette=viridis::turbo(n = 19)
@@ -163,7 +188,7 @@ ggsave(plot=heritp,device = "png",filename ="Plots/herit.png",dpi = "retina",hei
 
 
 
-## Mixed-effect models
+# Mixed-effect models
 
 ```{r}
 
@@ -196,6 +221,8 @@ ls()
 library(asreml)
 
 her=NULL
+Blups=NULL
+lrt=NULL
 # traits=colnames(LB[,5:16])
 
 table(LB[LB$Env=="Tiangua","PH"])
@@ -211,7 +238,7 @@ table(LB[LB$Env=="Tiangua","PH"])
 # LB[LB$Env=="Tiangua" & LB$PH == md+std*2.5  ,"PH"] <- NA
 # hist(LB[,"PH"])
 # table(LB[LB$Env=="Tiangua","PH"],useNA = "ifany")
-# traits=c("PH", "NDF", "NDM", "OHSW", "PN", "GY")
+traits=c("PH", "NDF", "NDM", "OHSW", "PN", "GY")
 
 j=traits[6]
 unique(LB$Env)
@@ -228,6 +255,15 @@ cat("====> Trait:", j, fill = TRUE)
 str(LB)
 head(LB)
 
+ 
+      
+  
+     
+
+      
+
+    
+
 
 
 
@@ -236,6 +272,16 @@ mod2 = asreml(fixed = LB[,j] ~ Block + Env,
               data = LB, maxiter=50,
               na.action = na.method(x="exclude", y = "exclude"))
 
+lrtest.g = as.data.frame(lrt(asreml(fixed = LB[,j] ~ Block + Env, 
+                        residual = ~units, maxit = 50,
+                        data = LB),mod2))
+lrtest.ge = as.data.frame(lrt(asreml(fixed = LB[,j] ~ Block + Env,
+                        random = ~GEN,
+                        residual = ~units, maxit = 50,
+                        data = LB),mod2))
+
+lrt[[j]]$g <- lrtest.g
+lrt[[j]]$ge <- lrtest.ge
  
 summary(mod2)$varcomp
 mod2 = update(mod2)
@@ -251,6 +297,7 @@ MVdelta = mean((predm2_sed$sed^2)[upper.tri(predm2_sed$sed^2,diag = F)])
 acc2 = sqrt(1-(PEV/sum2[1,1])) 
 her2 = 1-(MVdelta/(2*summary(mod2)$varcomp[1,1])) 
 
+Blups[[j]]$blups <- predm2_vcov$pvals$predicted.value
 her[[j]]$h2 <- her2
 }
 
@@ -280,6 +327,17 @@ ggsave(plot=heritp_cul,device = "png",filename ="Plots/herit_cul.png",dpi = "ret
 
 ```
 
+### Blups
+```{r}
+
+blups_df <- do.call(rbind,Blups)
+
+```
+
+### LRT asreml
+```{r}
+lrt_df <- do.call(rbind,lrt)
+```
 
 
 #### LRT
@@ -840,10 +898,10 @@ df_vect = cbind(
 ```
 
 ```{r}
-ggplot(df_vec, aes(x = Desired, y = Achieved)) +
+ggplot(df_vect, aes(x = Desired, y = Achieved)) +
   geom_point(size = 3, color = "purple") +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-  geom_text(aes(label = Trait), nudge_x = 0.05, size = 5, color = "orange") +
+  # geom_text(aes(label = Trait), nudge_x = 0.05, size = 5, color = "orange") +
   coord_equal(xlim = c(-1,1), ylim = c(-1,1)) +
   labs(
     x = "Desired Gain",
@@ -993,26 +1051,26 @@ trait_names <- c(
   PH_BLUP   = "Plant Height (PH)",
   PN_BLUP   = "Pod Number (PN)"
 )
-df_long <- bind_rows(
-  lapply(names(BLUPgen), function(tr) {
-    BLUPgen[[tr]] %>%
-      mutate(
-        Trait  = trait_names[tr],
-        Status = ifelse(GEN %in% selected$GEN,
-                        "Selected", "Not Selected")
-      ) %>%
-      select(GEN, Trait, Status, Predicted)
-  })
-)
-df_long$Trait <- factor(
-  df_long$Trait,
-  levels = rev(trait_names)
-)
+# df_long <- bind_rows(
+#   lapply(names(BLUPgen), function(tr) {
+#     BLUPgen[[tr]] %>%
+#       mutate(
+#         Trait  = trait_names[tr],
+#         Status = ifelse(GEN %in% selected$GEN,
+#                         "Selected", "Not Selected")
+#       ) %>%
+#       select(GEN, Trait, Status, Predicted)
+#   })
+# )
+# df_long$Trait <- factor(
+#   df_long$Trait,
+#   levels = rev(trait_names)
+# )
 ```
 
 ### Density plot
 ```{r}
-BLUPgen=readxl::read_xlsx("BLUPgen_LB.xlsx",)
+BLUPgen=readxl::read_xlsx("BLUPgen_LB.xlsx")
 str(BLUPgen)
 all_sheets <- readxl::excel_sheets("BLUPgen_LB.xlsx")
 BLUPgen <- purrr::map(purrr::set_names(all_sheets),
@@ -1026,7 +1084,7 @@ selected <- DesireIndex[1:5, ]
 selected
 ```
 
-```{r}
+```{r, eval=FALSE}
 
 plot_density_SG <- function(data_trait, selected, xlab) {
   require(dplyr)
@@ -1096,6 +1154,6 @@ densplot = (pd1 | pd2) /
   theme(legend.position = "bottom")
 ```
 
-```{r}
+```{r, eval=FALSE}
 ggsave(plot = densplot, "densplot.pdf", width = 14, height = 12, dpi = 600)
 ```
