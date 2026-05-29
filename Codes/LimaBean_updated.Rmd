@@ -24,8 +24,6 @@ output:
     lightbox: true
     gallery: false
     highlight: tango
-    toc: true
-    toc_depth: 3
     number_sections: true
     code_folding: show
 editor_options: 
