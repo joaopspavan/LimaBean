@@ -1,18 +1,32 @@
 ---
-title: "Leveraging GxE Interaction to Optimize Multi-Trait Selection in Lima Bean"
-date: "`r Sys.Date()`"
+project:
+  type: website
+  output-dir: docs
+
+title: "Leveraging G×E Interaction to Optimize Multi-Trait Selection in Lima Bean"
 author: "João Paulo Silva Pavan"
+date: today
+
+website:
+  title: "Lima Bean G×E Analysis"
+  navbar:
+    left:
+      - text: Home
+        href: LimaBean_.qmd
+
 format:
   html:
     toc: true
+    page-layout: full
   pdf:
     toc: true
+
 editor: visual
-editor_options: 
+editor_options:
   chunk_output_type: console
 ---
 
-# Packages
+### Packages
 
 ```{r, message= FALSE, warning= FALSE}
 library(reshape2)
@@ -57,37 +71,37 @@ knitr::opts_chunk$set(echo = TRUE)
     |      Seed Thickness      |   ST    |  mm   |
     |        Seed Width        |   SW    |  mm   |
 
-    #### Load the data
+#### Load the data
 
-    ```{r, message= FALSE, warning= FALSE}
-    LB = read.xlsx("Data//LimaBean.xlsx")
-    LB$Block    <- as.factor(LB$Block)
-    LB$Env    <- as.factor(LB$Env)
-    LB$Genotype <- as.factor(LB$Genotype)
-    LB$GEN<- as.factor(LB$GEN)
-    str(LB)
-    ```
+```{r, message= FALSE, warning= FALSE}
+LB = read.xlsx("Data//LimaBean.xlsx")
+LB$Block    <- as.factor(LB$Block)
+LB$Env    <- as.factor(LB$Env)
+LB$Genotype <- as.factor(LB$Genotype)
+LB$GEN<- as.factor(LB$GEN)
+str(LB)
+```
 
-    ### Histograms
+### Histograms
 
-    ```{r, eval=FALSE}
-    hist(LB$NDF)
-    hist(LB$NDM)
-    hist(LB$PH)
-    hist(LB$PL)
-    hist(LB$PW)
-    hist(LB$PT)
-    hist(LB$SL)
-    hist(LB$SW)
-    hist(LB$ST)
-    hist(LB$PN)
-    hist(LB$GY)
-    hist(LB$OHSW)
-    ```
+```{r, eval=FALSE}
+hist(LB$NDF)
+hist(LB$NDM)
+hist(LB$PH)
+hist(LB$PL)
+hist(LB$PW)
+hist(LB$PT)
+hist(LB$SL)
+hist(LB$SW)
+hist(LB$ST)
+hist(LB$PN)
+hist(LB$GY)
+hist(LB$OHSW)
+```
 
 ## Anova
 
-```{r, eval=FALSE, , message= FALSE, warning= FALSE}
+```{r, eval=FALSE, message= FALSE, warning= FALSE}
 aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
 ```
 
@@ -146,7 +160,7 @@ ggsave(plot=vcp,device = "png",filename ="Plots/varcomp.png",dpi = "retina",heig
 
 ### Broad-sense Heritability
 
-```{r, fig.width=12, fig.height=8, , message= FALSE, warning= FALSE}
+```{r, fig.width=12, fig.height=8, message= FALSE, warning= FALSE}
 custom_palette=viridis::turbo(n = 19)
 her=do.call(rbind,herit)
 colnames(her)
@@ -235,7 +249,7 @@ herit_table <- varcomp %>%
 herit_table
 ```
 
-## Broad-sense Heritability MET
+### Broad-sense Heritability MET
 
 ```{r, message=FALSE, warning=FALSE, fig.width=8, fig.height=6}
 herit_met=get_model_data(mixedmodel, "h2")
@@ -258,7 +272,7 @@ ggsave(plot=heritp2,device = "pdf",filename ="Plots/herit_met.pdf",dpi = "retina
 ggsave(plot=heritp2,device = "png",filename ="Plots/herit_met.png",dpi = "retina",height = 6,width = 8,bg = "white")
 ```
 
-## Culllis Heritability
+### Culllis Heritability
 
 ```{r, message=FALSE, warning=FALSE}
 traits <- c("PH", "NDF", "NDM", "OHSW", "PN", "GY")
@@ -759,7 +773,9 @@ pdf(
 dev.off()
 ```
 
-#GGE BIPLOT \## Which-Won-where
+## GGE BIPLOT
+
+### Which-Won-where
 
 ```{r, fig.width=14, fig.height=16, message= FALSE, warning= FALSE}
 www <- list()
@@ -819,7 +835,7 @@ www_lb
 ggsave("Which-won-Where2.pdf", www_lb,width = 14, height = 16, dpi = 600)
 ```
 
-## Mean_performance vs. stability
+### Mean_performance vs. stability
 
 ```{r, message= FALSE, warning= FALSE}
 dir.create("Mean_performance_vs_stability", showWarnings = FALSE)
@@ -1083,7 +1099,7 @@ mps_panel
 ggsave("Mean Performance vs Stability_LB2.pdf", mps_panel, width = 14, height = 16, dpi = 600)
 ```
 
-#### Discriminativeness vs. representativeness
+### Discriminativeness vs. representativeness
 
 ```{r, message=FALSE, warning=FALSE}
 library(ggplot2)
@@ -1372,7 +1388,8 @@ dr_panel
 ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 14, height = 16, dpi = 600)
 ```
 
-# Simultaneous Selection 
+# Simultaneous Selection
+
 ## Desire Gain Index
 
 ```{r}
@@ -2032,7 +2049,7 @@ ggsave("SelectionShiftPlot.pdf", plot = SelectionShiftPlot,
        dpi = 600)
 ```
 
-## Density plot
+### Density plot
 
 ```{r, eval=FALSE, echo=FALSE, message= FALSE, warning= FALSE}
 BLUPgen=readxl::read_xlsx("BLUPgen_LB.xlsx",)
@@ -2170,7 +2187,7 @@ ggsave(plot = densplot, "densplot.pdf", width = 14, height = 8, dpi = 600)
 
 ## Environmental Similarity
 
-```{r, message=FALSE, warning=FALSE, message= FALSE, warning= FALSE}
+```{r, message=FALSE, warning=FALSE}
 library(EnvRtype)
 library(terra)
 library(raster)
