@@ -1,0 +1,16 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Lima Bean G×E Analysis"
+  navbar:
+    left:
+      - text: Report
+        href: Codes/LimaBean_.qmd
+
+format:
+  html:
+    toc: true
+    theme: cosmo
+    page-layout: full
