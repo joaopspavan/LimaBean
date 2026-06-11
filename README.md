@@ -59,4 +59,5 @@ If you use this code, data, or results in your research, please cite:
 Have questions, want to collaborate, or found a bug?\
 Feel free to contact:
 
-[joaosilvapavan\@usp.br](mailto:joaosilvapavan@usp.br){.email}
+[joaosilvapavan\@usp.br](mailto:joaosilvapavan@usp.br)
+
