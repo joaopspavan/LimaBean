@@ -1,0 +1,2403 @@
+---
+title: "Leveraging GxE Interaction to Optimize Multi-Trait Selection in Lima Bean"
+date: "`r Sys.Date()`"
+author: "João Paulo Silva Pavan"
+format:
+  html:
+    toc: true
+  pdf:
+    toc: true
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+# Packages
+
+```{r, message= FALSE, warning= FALSE}
+library(reshape2)
+library(ggplot2)
+library(openxlsx)
+library(asreml)
+library(dplyr)
+library(tibble)
+library(metan)
+library(writexl)
+```
+
+```{r, message= FALSE, warning= FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+  knitr::opts_knit$set(root.dir = "../")
+```
+
+## Lima Bean Data
+
+-   3 Locations (Brazil) - Piracicaba - SP, Teresina - PI, Tianguá - CE,
+
+-   40 Lima Bean Lines
+
+-   Randomized Complete Block Design (RCBD) - 3 Repetitions
+
+-   Plot usable area: 5m²
+
+-   Traits:
+
+    |          Trait           | Acronym | Unit  |
+    |:------------------------:|:-------:|:-----:|
+    |       Grain Yield        |   GY    | kg/ha |
+    | Number days to flowering |   NDF   | days  |
+    | Number days to maturity  |   NDM   | days  |
+    | One Hundred Seed Weight  |  OHSW   |   g   |
+    |       Plant Height       |   PH    |  cm   |
+    |        Pod Length        |   PL    |  mm   |
+    |        Pod Number        |   PN    |  mm   |
+    |      Pod Thickness       |   PT    |  mm   |
+    |        Pod Width         |   PW    |  mm   |
+    |       Seed Length        |   SL    |  mm   |
+    |      Seed Thickness      |   ST    |  mm   |
+    |        Seed Width        |   SW    |  mm   |
+
+    #### Load the data
+
+    ```{r, message= FALSE, warning= FALSE}
+    LB = read.xlsx("Data//LimaBean.xlsx")
+    LB$Block    <- as.factor(LB$Block)
+    LB$Env    <- as.factor(LB$Env)
+    LB$Genotype <- as.factor(LB$Genotype)
+    LB$GEN<- as.factor(LB$GEN)
+    str(LB)
+    ```
+
+    ### Histograms
+
+    ```{r, eval=FALSE}
+    hist(LB$NDF)
+    hist(LB$NDM)
+    hist(LB$PH)
+    hist(LB$PL)
+    hist(LB$PW)
+    hist(LB$PT)
+    hist(LB$SL)
+    hist(LB$SW)
+    hist(LB$ST)
+    hist(LB$PN)
+    hist(LB$GY)
+    hist(LB$OHSW)
+    ```
+
+## Anova
+
+```{r, eval=FALSE, , message= FALSE, warning= FALSE}
+aov = anova_joint(LB,env = Env, gen = GEN, rep = Block,resp = everything())
+```
+
+## Single environment analyses
+
+```{r warning=FALSE, message=FALSE}
+data.list = split(LB, f = LB$Env)
+vccomp=list()
+herit=list()
+j="Piracicaba"
+for (j in names(data.list)) {
+
+   x = droplevels(data.list[[j]])
+  cat("====> Environment:", j, fill = TRUE)
+
+st <- gamem(x,
+             gen = GEN,
+             rep =  Block,
+             resp = everything())
+st
+vccomp[[j]]=get_model_data(st, "vcomp")
+vccomp[[j]]$env=j
+herit[[j]]=get_model_data(st, "h2")
+herit[[j]]$env=j
+}
+```
+
+### Variance components
+
+```{r, message= FALSE, warning= FALSE}
+custom_palette=viridis::turbo(n = 19)
+vc=do.call(rbind,vccomp)
+colnames(vc)
+traits=colnames(vc[,2:13])
+vc_long <- reshape2::melt(vc, measure.vars = traits, variable.name = "trait")
+
+vc_long$effect =paste(vc_long$Group,vc_long$env, sep = "_")
+
+vcp <- vc_long |> 
+  ggplot(aes(x = Group, y = value, fill = effect)) + 
+  geom_col(position = "stack", just = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(face = "bold")) + 
+  facet_wrap(~trait, scales = "free") +
+  labs(x = "Effects", y = "Variance components", fill = "Effects") +
+  scale_fill_manual(
+    values = custom_palette,  
+  )
+vcp
+```
+
+```{r, eval=FALSE}
+ggsave(plot=vcp,device = "pdf",filename ="Plots/varcomp.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=vcp,device = "png",filename ="Plots/varcomp.png",dpi = "retina",height = 6,width = 8,bg = "white")
+```
+
+### Broad-sense Heritability
+
+```{r, fig.width=12, fig.height=8, , message= FALSE, warning= FALSE}
+custom_palette=viridis::turbo(n = 19)
+her=do.call(rbind,herit)
+colnames(her)
+
+heritp <- her |> 
+  ggplot(aes(x = VAR, y = h2, fill = env)) + 
+  geom_col(position = "stack", just = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(face = "bold")) + 
+  facet_wrap(~env, scales = "free") +
+  labs(x = "Traits", y = "Broad-sense heritability", fill = "Environments") +
+  scale_fill_manual(
+    values = custom_palette)
+heritp
+```
+
+```{r, eval=FALSE}
+ggsave(plot=heritp,device = "pdf",filename ="Plots/herit.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=heritp,device = "png",filename ="Plots/herit.png",dpi = "retina",height = 6,width = 8,bg = "white")
+```
+
+## Mixed-effect models
+
+```{r, message=FALSE, warning=FALSE}
+mixedmodel <- gamem_met(LB,env = Env, gen = GEN, rep = Block,random = "gen" ,resp = everything())
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(purrr)
+
+ne <- length(unique(LB$Env))
+nr <- length(unique(LB$Block))
+
+varcomp <- map_dfr(names(mixedmodel), function(tr){
+
+  if(!"random" %in% names(mixedmodel[[tr]]))
+    return(NULL)
+  vc <- mixedmodel[[tr]]$random
+  tibble(
+    Trait = tr,
+    sigma_g  = vc$Variance[vc$Group == "GEN"],
+    sigma_ge = vc$Variance[vc$Group == "GEN:ENV"],
+    sigma_e  = vc$Variance[vc$Group == "Residual"]
+  )
+})
+genpar <- get_model_data(mixedmodel) %>%
+  pivot_longer(
+    cols = -Parameters,
+    names_to = "Trait",
+    values_to = "Value") %>%
+  pivot_wider(
+    names_from = Parameters,
+    values_from = Value)
+
+herit_table <- varcomp %>%
+  left_join(genpar, by = "Trait") %>%
+  dplyr::mutate(
+
+    H2_individual =
+      sigma_g /
+      (sigma_g + sigma_ge + sigma_e),
+
+    H2_MET =
+      sigma_g /
+      (sigma_g +
+         sigma_ge/ne +
+         sigma_e/(ne*nr)),
+
+    H2mg_metan = h2mg) %>%
+  dplyr::select(
+    Trait,
+    sigma_g,
+    sigma_ge,
+    sigma_e,
+    H2_individual,
+    H2_MET,
+    H2mg_metan,
+    Accuracy,
+    GEIr2,
+    rge,
+    CVg,
+    CVr,
+    `CV ratio`)
+herit_table
+```
+
+## Broad-sense Heritability MET
+
+```{r, message=FALSE, warning=FALSE, fig.width=8, fig.height=6}
+herit_met=get_model_data(mixedmodel, "h2")
+
+custom_palette=viridis::turbo(n = 12)
+heritp2 <- herit_met |> 
+  ggplot(aes(x = VAR, y = h2, fill=VAR)) + 
+  geom_col(position = "stack", just = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(face = "bold")) +
+  labs(x = "Traits", y = "Broad-sense heritability",fill = "Traits") +
+  scale_fill_manual(
+    values = custom_palette,  
+  )
+heritp2
+```
+
+```{r, eval=FALSE}
+ggsave(plot=heritp2,device = "pdf",filename ="Plots/herit_met.pdf",dpi = "retina",height = 6,width = 8)
+ggsave(plot=heritp2,device = "png",filename ="Plots/herit_met.png",dpi = "retina",height = 6,width = 8,bg = "white")
+```
+
+## Culllis Heritability
+
+```{r, message=FALSE, warning=FALSE}
+traits <- c("PH", "NDF", "NDM", "OHSW", "PN", "GY")
+library(sommer)
+library(purrr)
+library(dplyr)
+calc_cullis <- function(tr){
+  mod <- mmer(
+    fixed  = as.formula(
+      paste0(tr," ~ Env + Block:Env")
+    ),
+    random = ~ GEN + GEN:Env,
+    rcov   = ~ units,
+    data   = LB
+  )
+  vg <- mod$sigma$GEN
+  C22 <- mod$PevU$GEN[[tr]]
+  n_g <- nrow(C22)
+  trC22 <- sum(diag(C22))
+
+  av2 <- 2/n_g *
+    (trC22 -
+      (sum(C22)-trC22)/(n_g-1))
+
+  H2 <- 1 - av2/(2*vg)
+
+  tibble(
+    Trait = tr,
+    Cullis_H2 = as.numeric(H2))
+
+}
+Cullis_all <- map_dfr(
+  traits,
+  calc_cullis)
+Cullis_all
+```
+
+### LRT
+
+```{r}
+GYLRT = mixedmodel$GY$LRT
+OHSWLRT = mixedmodel$OHSW$LRT 
+NDFLRT = mixedmodel$NDF$LRT
+NDMLRT = mixedmodel$NDM$LRT 
+PHLRT = mixedmodel$PH$LRT
+PNLRT = mixedmodel$PN$LRT
+LRT = list(
+  GY_LRT   = GYLRT,
+  OHSW_LRT = OHSWLRT,
+  NDF_LRT  = NDFLRT,
+  NDM_LRT  = NDMLRT,
+  PH_LRT   = PHLRT,
+  PN_LRT   = PNLRT)
+LRT
+```
+
+```{r, eval=FALSE}
+write_xlsx(LRT, "LRT_LB.xlsx")
+```
+
+#### BLUPs
+
+```{r}
+BLUPgen = list(
+  GY_BLUP   = mixedmodel$GY$BLUPgen,
+  OHSW_BLUP = mixedmodel$OHSW$BLUPgen,
+  NDF_BLUP  = mixedmodel$NDF$BLUPgen,
+  NDM_BLUP  = mixedmodel$NDM$BLUPgen,
+  PH_BLUP   = mixedmodel$PH$BLUPgen,
+  PN_BLUP   = mixedmodel$PN$BLUPgen)
+head(BLUPgen)
+```
+
+```{r, eval=FALSE}
+write_xlsx(BLUPgen, "BLUPgen_LB.xlsx")
+```
+
+```{r, message=FALSE, warning=FALSE}
+sommer_models <- setNames(
+  map(traits, \(tr)
+    mmer(
+      fixed  = as.formula(
+        paste0(tr, " ~ Env + Block:Env")
+      ),
+      random = ~ GEN + GEN:Env,
+      rcov   = ~ units,
+      data   = LB
+    )
+  ),
+  traits)
+sommer_blups <- map(
+  traits,
+  function(tr){
+
+    data.frame(
+      GEN = gsub("GEN", "", names(sommer_models[[tr]]$U$GEN[[tr]])),
+      BLUP_sommer = as.numeric(
+        sommer_models[[tr]]$U$GEN[[tr]]
+      )
+    )
+
+  }
+)
+names(sommer_blups) <- traits
+```
+
+```{r}
+#Compare BLUPs- gamem_met and mmer 
+library(dplyr)
+
+compare_blups <- map_dfr(
+  traits,
+  function(tr){
+
+    gamem_blup <-
+      mixedmodel[[tr]]$BLUPgen |>
+      dplyr::select(GEN, BLUPg)
+
+    sommer_blup <- sommer_blups[[tr]]
+
+    comp <- left_join(
+      gamem_blup,
+      sommer_blup,
+      by = "GEN")
+    tibble(
+      Trait = tr,
+      Correlation =
+        cor(
+          comp$BLUPg,
+          comp$BLUP_sommer
+        ),
+      Max_Difference =
+        max(
+          abs(
+            comp$BLUPg -
+            comp$BLUP_sommer
+          )
+        )
+    )
+
+  }
+)
+compare_blups
+```
+
+```{r}
+library(dplyr)
+library(tibble)
+
+ebvMat <- data.frame(
+  GEN = mixedmodel$GY$BLUPgen$GEN,
+  GY   = mixedmodel$GY$BLUPgen$Predicted,
+  OHSW = mixedmodel$OHSW$BLUPgen$Predicted,
+  NDF  = mixedmodel$NDF$BLUPgen$Predicted,
+  NDM  = mixedmodel$NDM$BLUPgen$Predicted,
+  PH   = mixedmodel$PH$BLUPgen$Predicted,
+  PN   = mixedmodel$PN$BLUPgen$Predicted
+) |>
+  column_to_rownames("GEN") |>
+  as.matrix()
+dim(ebvMat)
+head(ebvMat)
+save(ebvMat,file = "Data/ebvMat.rda")
+```
+
+```{r, eval=FALSE}
+trait_units <- c(
+  GY   = "kg/ha",   
+  OHSW = "g",
+  PH   = "cm",
+  PN   = "number",
+  NDF  = "number",
+  NDM  = "number")
+plot_trait_heatmap <- function(x, trait_name) {
+  gen_order <- sprintf("L%02d", 1:40)
+  df <- x[[trait_name]]$BLUPgen %>%
+    filter(GEN %in% gen_order) %>%
+    dplyr::mutate(
+      GEN = factor(GEN, levels = gen_order),
+      Trait = trait_name
+    )
+  ggplot(df, aes(x = GEN, y = Trait, fill = Predicted)) +
+    geom_tile() +
+    scale_fill_gradientn(
+      colours = c("orange", "#E37383", "purple"),
+      name = bquote(hat(y)~"("~.(trait_units[[trait_name]])~")")) +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+      axis.text.y = element_text(angle = 90, face = "bold"),
+      legend.position = "right",
+      panel.grid = element_blank())
+}
+traits <- c("GY", "OHSW", "PH", "PN", "NDF", "NDM")
+BLUP_heatmaps <- lapply(traits, function(trait) {
+  plot_trait_heatmap(mixedmodel, trait)
+})
+library(ggpubr)
+blups_heatmap_panel <- ggarrange(
+  plotlist = BLUP_heatmaps,
+  ncol = 2, nrow = 3,
+  labels = c("A", "B", "C", "D", "E", "F"), font.label = list(size = 10, face = "bold"),
+  align = "v")
+ggsave(
+  "BLUPs_LB.pdf",
+  blups_heatmap_panel,
+  width = 14,
+  height = 12,
+  dpi = 600)
+```
+
+```{r, message= FALSE, warning= FALSE}
+trait_units <- c(
+  GY   = "kg/ha",   
+  OHSW = "g",
+  PH   = "cm",
+  PN   = "number",
+  NDF  = "number",
+  NDM  = "number")
+plot_trait_dot <- function(x, trait_name){
+  gen_order <- sprintf("L%02d", 1:40)
+  df <- x[[trait_name]]$BLUPgen %>%
+    filter(GEN %in% gen_order) %>%
+    dplyr::mutate(
+      GEN = factor(GEN, levels = gen_order),
+      Trait = trait_name)
+  ggplot(df, aes(x = Trait, y = GEN)) +
+    geom_point(
+      aes(
+        size  = round(abs(Predicted)),
+        color = Predicted),
+      alpha = 0.75) +
+    scale_color_gradientn(
+      colours = c("orange", "lightpink", "purple"),
+      name = bquote(hat(y)~"("~.(trait_units[[trait_name]])~")"),
+      guide = guide_colorbar(
+    barheight = unit(0.3, "cm"),
+    barwidth = unit(4, "cm"))) +
+
+    scale_size(range = c(8,11), guide = "none") +
+
+    labs(
+      x = NULL,
+      y = NULL) +
+
+    theme_linedraw(base_size = 12) +
+    theme(
+      axis.text.x = element_text(
+        angle = 0,
+        hjust = 1,
+        vjust = 1,
+        face = "bold"),
+      axis.text.y = element_text(face = "bold"),
+      panel.grid = element_blank(),
+      legend.position = "bottom",legend.title.position = "bottom",
+      legend.text = element_text(size = 7.5, face = "bold"),
+      legend.title = element_text(size = 8, face = "bold"))
+}
+traits <- c("GY", "OHSW", "PN", "PH", "NDF", "NDM")
+
+BLUP_dots <- lapply(traits, function(tr){
+  plot_trait_dot(mixedmodel, tr)
+})
+
+library(ggpubr)
+#BLUP_dots
+```
+
+```{r,fig.width=14, fig.height=12, message= FALSE, warning= FALSE}
+blups_d_panel <- ggarrange(
+  plotlist = BLUP_dots,
+  ncol = 6, nrow = 1,
+  labels = c("A", "B", "C", "D", "E", "F"), vjust = 0.11,
+  font.label = list(face = "bold"),label.y = 0.01,
+  align = "v")
+blups_d_panel
+```
+
+```{r, eval=FALSE}
+ggsave(
+  "BLUPs_d2_LB.pdf",
+  blups_d_panel, height = 11, width = 13,
+  dpi = 600)
+```
+
+#### Correlation
+
+```{r, warning=FALSE, message=FALSE}
+corrplot = plot(
+  corr_coef(LB, NDF, NDM, PH, PN, GY, OHSW),
+  type = "upper",
+  diag = FALSE,
+  reorder = T,
+  signif = c("stars", "pval"),
+  show = c("all", "signif"),
+  p_val = 0.05,
+  caption = TRUE,
+  digits.cor = 2,
+  digits.pval = 3,
+  col.low = "orange",
+  col.mid = "white",
+  col.high = "purple",
+  lab.x.position = "top",
+  lab.y.position = "left",   
+  legend.position = "right",
+  legend.title = "Pearson's\nCorrelation",
+  size.text.cor = 5,
+  size.text.signif = 5,
+  size.text.lab = 14)
+```
+
+```{r, eval=FALSE}
+ggsave("Correlation.pdf",corrplot, width = 7, height = 6, dpi = 600)
+```
+
+```{r, message=FALSE, warning=FALSE, eval=FALSE, echo=FALSE, fig.width=14, fig.height=10}
+library(tidyverse)
+library(igraph)
+library(ggraph)
+library(grid)
+corr_df <- data.frame(
+  Trait1 = c(
+    "NDF","NDF","NDF","NDF","NDF",
+    "NDM","NDM","NDM","NDM",
+    "PH","PH","PH",
+    "PN","PN",
+    "GY"),
+  Trait2 = c(
+    "NDM","PH","PN","GY","OHSW",
+    "PH","PN","GY","OHSW",
+    "PN","GY","OHSW",
+    "GY","OHSW",
+    "OHSW"),
+  Correlation = c(
+    0.587, 0.205,-0.230,-0.264,-0.129,
+    0.224,-0.214,-0.262,-0.131,
+    0.160, 0.177, 0.413,
+    0.861, 0.123,
+    0.267))
+library(igraph)
+library(ggraph)
+library(ggplot2)
+library(grid)
+# Graph
+g <- graph_from_data_frame(corr_df, directed = FALSE)
+# Plot
+network_plot <- ggraph(g, layout = "fr") +
+  geom_edge_link(
+    aes(
+      color = Correlation,
+      width = abs(Correlation)
+    ),
+    alpha = 0.85
+  ) +
+  geom_node_point(size = 6, color = "black") +
+  geom_node_text(
+    aes(label = name),
+    size = 5,
+    fontface = "bold",
+    repel = TRUE) +
+  scale_edge_color_gradient2(
+    low = "orange",
+    mid = "lightpink",
+    high = "purple4",
+    midpoint = 0,
+    limits = c(-1, 1)
+  ) +
+  scale_edge_width(range = c(0.3, 2)) +
+  labs(
+    edge_color = "Pearson correlation",
+    edge_width = "") +
+  guides(
+    edge_width = guide_legend(title = NULL)) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold", size = 12),
+    legend.text = element_text(size = 10))
+ggsave("network_plot.pdf",network_plot, width = 7, height = 5, dpi = 600)
+```
+
+```{r, message=FALSE, warning=FALSE,fig.width=8, fig.height=8}
+library(circlize)
+# Correlation matrix
+corr_mat <- matrix(
+  c(
+    1.000, 0.587, 0.205,-0.230,-0.264,-0.129,
+    0.587, 1.000, 0.224,-0.214,-0.262,-0.131,
+    0.205, 0.224, 1.000, 0.160, 0.177, 0.413,
+   -0.230,-0.214, 0.160, 1.000, 0.861, 0.123,
+   -0.264,-0.262, 0.177, 0.861, 1.000, 0.267,
+   -0.129,-0.131, 0.413, 0.123, 0.267, 1.000),
+  nrow = 6,
+  byrow = TRUE)
+traits <- c(
+  "NDF",
+  "NDM",
+  "PH",
+  "PN",
+  "GY",
+  "OHSW")
+rownames(corr_mat) <- traits
+colnames(corr_mat) <- traits
+# Convert matrix to links
+corr_df <- data.frame()
+for(i in 1:(nrow(corr_mat)-1)){
+  for(j in (i+1):ncol(corr_mat)){
+    corr_df <- rbind(
+      corr_df,
+      data.frame(
+        from  = rownames(corr_mat)[i],
+        to    = colnames(corr_mat)[j],
+        value = corr_mat[i,j]))
+  }
+}
+# Link colors
+corr_df$link_col <- ifelse(
+  corr_df$value > 0,
+  "purple",
+  "orange")
+# Trait colors
+grid_cols <- c(
+  NDF  = "grey60",
+  NDM  = "grey40",
+  PH   = "grey60",
+  PN   = "grey40",
+  GY   = "grey60",
+  OHSW = "grey40")
+# Plot
+circos.clear()
+chordDiagram(
+  x = corr_df[, c("from","to","value")],
+  grid.col = grid_cols,
+  col = corr_df$link_col,
+  transparency = 0.80,
+  directional = 0,
+  # MUCH THINNER LINES
+  link.lwd = 0.5 + abs(corr_df$value) * 2,
+  annotationTrack = "grid",
+  preAllocateTracks = list(
+    track.height = 0.12))
+# Trait labels
+circos.track(
+  track.index = 1,
+  panel.fun = function(x,y){
+    circos.text(
+      CELL_META$xcenter,
+      CELL_META$ylim[1],
+      CELL_META$sector.index,
+      facing = "clockwise",
+      niceFacing = TRUE,
+      adj = c(0,0.5),
+      font = 2,
+      cex = 1.3)
+  },
+  bg.border = NA
+)
+# Title
+title(
+  "Pearson Correlation Network",
+  font.main = 2,
+  cex.main = 1.4)
+# Legends
+legend(
+  "topleft",
+  legend = c(
+    "Positive",
+    "Negative"),
+  col = c(
+    "purple",
+    "orange"),
+  lwd = 4,
+  title = "Correlation sign",
+  bty = "n",
+  cex = 1)
+legend(
+  "topright",
+  legend = c(
+    "|r| = 0.2",
+    "|r| = 0.5",
+    "|r| = 0.8"),
+  lwd = c(
+    0.5 + 0.2*2,
+    0.5 + 0.5*2,
+    0.5 + 0.8*2),
+  col = "black",
+  title = "Correlation strength",
+  bty = "n",
+  cex = 1)
+```
+
+```{r, eval=FALSE}
+pdf(
+  "Correlation_Chord_Diagram.pdf",
+  width = 8,
+  height = 8)
+dev.off()
+```
+
+#GGE BIPLOT \## Which-Won-where
+
+```{r, fig.width=14, fig.height=16, message= FALSE, warning= FALSE}
+www <- list()
+
+for(tr in traits){
+  gge3_tr <- gge(LB, Env, GEN, resp = tr, svp = "symmetrical")
+  
+  p <- plot(gge3_tr,
+            type = 3,
+            col.env = "orange",
+            col.gen = "purple",
+            shape.gen = 21,
+            shape.env = 23,
+            col.alpha = 0.3,
+            arrow.color = "purple",
+            size.text.gen = 4,
+            size.text.win = 8,
+            size.text.env = 8,
+            size.shape = 5,
+            size.shape.win = 10,
+            large_label = 10,
+            repel = TRUE,
+            max_overlaps = 40, 
+            repulsion =8,
+            col.line = "orange",
+            plot_theme = theme_metan_minimal())
+  
+  p_try <- try({
+    p2 <- p + labs(title = tr, subtitle = NULL) +
+            theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    p <- p2
+    NULL
+  }, silent = TRUE)
+  
+  if(inherits(p_try, "try-error") || !inherits(p, "ggplot")) {
+    p_grob <- ggpubr::as_ggplot(p)            
+    p <- p_grob + labs(title = tr, subtitle = NULL) +
+              theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  }
+  
+  www[[tr]] <- p
+}
+www_lb <- ggarrange(
+  www[["GY"]],  www[["OHSW"]], www[["PN"]],
+  www[["PH"]],  www[["NDF"]],  www[["NDM"]],
+  ncol = 2, nrow = 3,
+  common.legend = TRUE, legend = "bottom",
+  labels = c("A","B","C","D","E","F"),
+  font.label = list(size = 12, face = "bold"),
+  align = "hv",
+  hjust = -0.5,
+  vjust = 1.5)
+www_lb
+```
+
+```{r, eval=FALSE}
+ggsave("Which-won-Where2.pdf", www_lb,width = 14, height = 16, dpi = 600)
+```
+
+## Mean_performance vs. stability
+
+```{r, message= FALSE, warning= FALSE}
+dir.create("Mean_performance_vs_stability", showWarnings = FALSE)
+
+mps_list <- list()
+
+for(tr in traits){
+    gge2_tr <- gge(
+    LB,
+    Env,
+    GEN,
+    resp = tr,
+    svp = "genotype")
+  # Plot type 2
+  p <- plot(gge2_tr,
+            type = 2,
+            col.env = "orange",
+            col.gen = "purple",
+            shape.gen = 21,
+            shape.env = 23,
+            col.alpha = 0.3,
+            arrow.color = "purple",
+            size.text.gen = 4,
+            size.text.env = 5,
+            size.shape = 5,
+            large_label = 1,
+            repel = TRUE,
+            max_overlaps = 10, 
+            repulsion =40,
+            col.line = "orange",
+            axis_expand = 1.2,
+            plot_theme = theme_metan_minimal())
+  
+  p_try <- try({
+    p2 <- p + labs(title = tr, subtitle = NULL) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    p <- p2
+    NULL
+  }, silent = TRUE)
+  
+  if(inherits(p_try, "try-error") || !inherits(p, "ggplot")) {
+    p_grob <- ggpubr::as_ggplot(p)
+    p <- p_grob + labs(title = tr, subtitle = NULL) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  }
+  
+  mps_list[[tr]] <- p2}
+
+mps_panel <- ggarrange(
+  mps_list[["GY"]],  mps_list[["OHSW"]], mps_list[["PN"]],
+  mps_list[["PH"]],  mps_list[["NDF"]],  mps_list[["NDM"]],
+  ncol = 2, nrow = 3,
+  common.legend = TRUE, legend = "bottom",
+  labels = c("A","B","C","D","E","F"),
+  font.label = list(size = 10, face = "bold"),
+  align = "hv")
+mps_panel = annotate_figure(
+  mps_panel,
+  top = text_grob("", size = 14),
+  fig.lab = "",
+  fig.lab.pos = "bottom")
+```
+
+```{r, message= FALSE, warning= FALSE}
+mps_GY <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "GY",
+  svp = "genotype")
+
+mpsp_GY <- plot(
+  mps_GY,
+  type = 2,
+  col.env = "orange",
+  col.gen = "purple",
+  col.line = "grey50",
+  size.text.gen = 4,
+  size.text.env = 5,
+  repel = TRUE,
+  repulsion = 0,
+  max_overlaps = 40,
+  axis_expand = 1.1,
+  plot_theme = theme_classic(base_size = 12)) +
+  labs(title = NULL, subtitle = NULL)
+
+mpsp_OHSW <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "OHSW",
+  svp = "genotype")
+
+mpspp_OHSW <- plot(
+  mpsp_OHSW,
+  type = 2,
+  col.env = "orange",
+  col.gen = "purple",
+  col.line = "grey50",
+  size.text.gen = 4,
+  size.text.env = 5,
+  repel = TRUE,
+  repulsion = 20,
+  max_overlaps = 30,
+  axis_expand = 1.08,
+  plot_theme = theme_classic(base_size = 14)) +
+  labs(title = NULL, subtitle = NULL)
+
+mpsp_PN <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "PN",
+  svp = "genotype")
+
+mpspp_PN <- plot(
+  mpsp_PN,
+  type = 2,
+  col.env = "orange",
+  col.gen = "purple",
+  col.line = "grey50",
+  size.text.gen = 4,
+  size.text.env = 5,
+  repel = TRUE,
+  repulsion = 20,
+  max_overlaps = 30,
+  axis_expand = 1.1,
+  plot_theme = theme_classic(base_size = 14)) +
+  labs(title = NULL, subtitle = NULL)
+
+mpsp_PH <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "PH",
+  svp = "genotype")
+
+mpspp_PH <- plot(
+  mpsp_PH,
+  type = 2,
+  col.env = "orange",
+  col.gen = "purple",
+  col.line = "grey50",
+  size.text.gen = 4,
+  size.text.env = 5,
+  repel = TRUE,
+  repulsion = 20,
+  max_overlaps = 30,
+  axis_expand = 1.05,
+  plot_theme = theme_classic(base_size = 14)) +
+  labs(title = NULL, subtitle = NULL)
+
+mpsp_NDF <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "NDF",
+  svp = "genotype")
+
+mpspp_NDF <- plot(
+  mpsp_NDF,
+  type = 2,
+  col.env = "orange",
+  col.gen = "purple",
+  col.line = "grey50",
+  size.text.gen = 4,
+  size.text.env = 5,
+  repel = TRUE,
+  repulsion = 20,
+  max_overlaps = 30,
+  axis_expand = 1.1,
+  plot_theme = theme_classic(base_size = 14)) +
+  labs(title = NULL, subtitle = NULL)
+
+mpsp_NDM <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "NDM",
+  svp = "genotype")
+
+mpspp_NDM <- plot(
+  mpsp_NDM,
+  type = 2,
+  col.env = "orange",
+  col.gen = "purple",
+  col.line = "grey50",
+  size.text.gen = 4,
+  size.text.env = 5,
+  repel = TRUE,
+  repulsion = 20,
+  max_overlaps = 30,
+  axis_expand = 1.07,
+  plot_theme = theme_classic(base_size = 14)) +
+  labs(title = NULL, subtitle = NULL)
+```
+
+```{r, message= FALSE, warning= FALSE}
+mpsp_GY <- mpsp_GY +
+  ggtitle("GY") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+mpspp_OHSW <- mpspp_OHSW +
+  ggtitle("OHSW") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+mpspp_PN <- mpspp_PN +
+  ggtitle("PN") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+mpspp_PH <- mpspp_PH +
+  ggtitle("PH") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+mpspp_NDF <- mpspp_NDF +
+  ggtitle("NDF") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+mpspp_NDM <- mpspp_NDM +
+  ggtitle("NDM") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+```{r,fig.width=14, fig.height=16, message= FALSE, warning= FALSE}
+common_theme <- theme(
+  legend.position = "bottom",
+  panel.grid = element_blank(),
+  plot.title = element_text(
+    hjust = 0.5,
+    face = "bold",
+    size = 12
+  )
+)
+mpsp_GY     <- mpsp_GY + common_theme
+mpspp_OHSW  <- mpspp_OHSW + common_theme
+mpspp_PN    <- mpspp_PN + common_theme
+mpspp_PH    <- mpspp_PH + common_theme
+mpspp_NDF   <- mpspp_NDF + common_theme
+mpspp_NDM   <- mpspp_NDM + common_theme
+mps_panel <- ggarrange(
+  mpsp_GY,
+  mpspp_OHSW,
+  mpspp_PN,
+  mpspp_PH,
+  mpspp_NDF,
+  mpspp_NDM,
+  ncol = 2,
+  nrow = 3,
+  common.legend = TRUE,
+  legend = "bottom",
+  labels = c("A","B","C","D","E","F"),
+  font.label = list(
+    size = 12,
+    face = "bold"
+  )
+)
+mps_panel
+```
+
+```{r, eval=FALSE}
+ggsave("Mean Performance vs Stability_LB2.pdf", mps_panel, width = 14, height = 16, dpi = 600)
+```
+
+#### Discriminativeness vs. representativeness
+
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(ggpubr)
+
+dir.create("Discriminativeness_vs_Representativeness", showWarnings = FALSE)
+
+dr_list <- list()
+
+for(tr in traits){
+
+  gge4_tr <- gge(
+    LB,
+    Env,
+    GEN,
+    resp = tr,
+    centering = "environment",
+    scaling = "none",
+    svp = "environment"
+  )
+  
+  p4 <- plot(gge4_tr,
+             type = 4,
+             col.env = "orange",
+             col.gen = "purple",
+             size.text.gen = 4,
+             size.text.env = 4 ,
+             repel = TRUE,
+             repulsion = 10,
+             col.line = "orange",
+             size.line = 0.5,
+             col.circle = "grey",
+             col.alpha = 0.4,
+             max_overlaps = 20,
+             plot_theme = theme_metan_minimal())
+  p_try <- try({
+    p4_mod <- p4 +
+      labs(title = tr, subtitle = NULL) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    p4 <- p4_mod
+    NULL
+  }, silent = TRUE)
+  if(inherits(p_try, "try-error") || !inherits(p4, "ggplot")) {
+    p_grob <- ggpubr::as_ggplot(p4)
+    p4 <- p_grob +
+      labs(title = tr, subtitle = NULL) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  }
+  dr_list[[tr]] <- p4
+}
+dr_panel <- ggarrange(
+  dr_list[["GY"]],  dr_list[["OHSW"]], dr_list[["PN"]],
+  dr_list[["PH"]],  dr_list[["NDF"]],  dr_list[["NDM"]],
+  ncol = 2, nrow = 3,
+  common.legend = TRUE, legend = "bottom",
+  labels = c("A","B","C","D","E","F"),
+  font.label = list(size = 10, face = "bold"), 
+  align = "hv",
+  hjust = -0.5,
+  vjust = 1.5
+)
+dr_panel = annotate_figure(
+  dr_panel,
+  top = text_grob("", size = 14),
+  fig.lab = "",
+  fig.lab.pos = "bottom"
+)
+```
+
+```{r, message= FALSE, warning= FALSE}
+dr_GY <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "GY",
+  centering = "environment",
+  scaling = "none",
+  svp = "environment"
+)
+
+drp_GY <- plot(
+  dr_GY,
+  type = 4,
+  col.env = "orange",
+  col.gen = "purple",
+  size.text.gen = 3,
+  size.text.env = 5,
+  col.alpha = 0.2,
+  repel = TRUE,
+  repulsion = 5,
+  max_overlaps = 20,
+  col.line = "darkorange",
+  plot_theme = theme_classic(base_size = 12)
+) +
+  labs(title = NULL, subtitle = NULL)
+
+dr_OHSW <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "OHSW",
+  centering = "environment",
+  scaling = "none",
+  svp = "environment"
+)
+
+drp_OHSW <- plot(
+  dr_OHSW,
+  type = 4,
+  col.env = "orange",
+  col.gen = "purple",
+  size.text.gen = 3,
+  size.text.env = 5,
+  col.alpha = 0.2,
+  repel = TRUE,
+  repulsion = 5,
+  max_overlaps = 20,
+  col.line = "darkorange",
+  plot_theme = theme_classic(base_size = 12)
+) +
+  labs(title = NULL, subtitle = NULL)
+
+dr_PN <- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "PN",
+  centering = "environment",
+  scaling = "none",
+  svp = "environment"
+)
+
+drp_PN <- plot(
+  dr_PN,
+  type = 4,
+  col.env = "orange",
+  col.gen = "purple",
+  size.text.gen = 3,
+  size.text.env = 5,
+  col.alpha = 0.2,
+  repel = TRUE,
+  repulsion = 5,
+  max_overlaps = 10,
+  col.line = "darkorange",
+  plot_theme = theme_classic(base_size = 12)
+) +
+  labs(title = NULL, subtitle = NULL)
+
+dr_PH<- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "PH",
+  centering = "environment",
+  scaling = "none",
+  svp = "environment"
+)
+
+drp_PH <- plot(
+  dr_PH,
+  type = 4,
+  col.env = "orange",
+  col.gen = "purple",
+  size.text.gen = 3,
+  size.text.env = 5,
+  col.alpha = 0.2,
+  repel = TRUE,
+  repulsion = 5,
+  max_overlaps = 20,
+  col.line = "darkorange",
+  plot_theme = theme_classic(base_size = 12)
+) +
+  labs(title = NULL, subtitle = NULL)
+
+dr_NDF<- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "NDF",
+  centering = "environment",
+  scaling = "none",
+  svp = "environment"
+)
+
+drp_NDF <- plot(
+  dr_NDF,
+  type = 4,
+  col.env = "orange",
+  col.gen = "purple",
+  size.text.gen = 3,
+  size.text.env = 5,
+  col.alpha = 0.2,
+  repel = TRUE,
+  repulsion = 5,
+  max_overlaps = 20,
+  col.line = "darkorange",
+  plot_theme = theme_classic(base_size = 12)
+) +
+  labs(title = NULL, subtitle = NULL)
+
+dr_NDM<- gge(
+  LB,
+  Env,
+  GEN,
+  resp = "NDM",
+  centering = "environment",
+  scaling = "none",
+  svp = "environment"
+)
+
+drp_NDM <- plot(
+  dr_NDM,
+  type = 4,
+  col.env = "orange",
+  col.gen = "purple",
+  size.text.gen = 3,
+  size.text.env = 5,
+  col.alpha = 0.2,
+  repel = TRUE,
+  repulsion = 5,
+  max_overlaps = 10,
+  col.line = "darkorange",
+  plot_theme = theme_classic(base_size = 12)
+) +
+  labs(title = NULL, subtitle = NULL)
+```
+
+```{r, fig.width=14, fig.height=16, message= FALSE, warning= FALSE}
+drp_GY <- drp_GY +
+  ggtitle("GY") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+drp_OHSW <- drp_OHSW +
+  ggtitle("OHSW") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+drp_PN <- drp_PN +
+  ggtitle("PN") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+drp_PH <- drp_PH +
+  ggtitle("PH") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+drp_NDF <- drp_NDF +
+  ggtitle("NDF") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+drp_NDM <- drp_NDM +
+  ggtitle("NDM") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+common_theme <- theme(
+  legend.position = "bottom",
+  panel.grid = element_blank(),
+  plot.title = element_text(
+    hjust = 0.5,
+    face = "bold",
+    size = 12))
+drp_GY    <- drp_GY    + common_theme
+drp_OHSW  <- drp_OHSW  + common_theme
+drp_PN    <- drp_PN    + common_theme
+drp_PH    <- drp_PH    + common_theme
+drp_NDF   <- drp_NDF   + common_theme
+drp_NDM   <- drp_NDM   + common_theme
+dr_panel <- ggarrange(
+  drp_GY,
+  drp_OHSW,
+  drp_PN,
+  drp_PH,
+  drp_NDF,
+  drp_NDM,
+  ncol = 2,
+  nrow = 3,
+  common.legend = TRUE,
+  legend = "bottom",
+  labels = c("A","B","C","D","E","F"),
+  font.label = list(
+    size = 12,
+    face = "bold"
+  )
+)
+dr_panel
+```
+
+```{r, eval=FALSE}
+ggsave("Discriminativeness vs Representativeness_LB.pdf", dr_panel, width = 14, height = 16, dpi = 600)
+```
+
+# Simultaneous Selection 
+## Desire Gain Index
+
+```{r}
+# DESIRE INDEX FUNCTION
+gainDiff <- function(ebvMat, b_ebv, dGain, nSel){ 
+  take <- order(ebvMat %*% b_ebv, decreasing = TRUE)[1:nSel]
+  mu_Sel <- colMeans(ebvMat[take, ])
+  resp   <- mu_Sel - colMeans(ebvMat)
+  resp   <- resp / sqrt(sum(resp^2))
+  sum((resp - dGain)^2)
+}
+```
+
+```{r}
+ebvMat <- ebvMat[complete.cases(ebvMat), ]
+#COV MATRIX -EBVS
+library(AlphaSimR)
+(G_ebv <- AlphaSimR::popVar(ebvMat))
+```
+
+```{r}
+#desired gains
+desiredGain <- c(
+  GY   =  2,
+  OHSW =  1,
+  NDF  = -1,
+  NDM  = -1,
+  PH   =  0,
+  PN   =  1
+)
+desiredGain <- desiredGain / sqrt(sum(desiredGain^2))
+sum(desiredGain^2)
+```
+
+```{r}
+b_ebv <- solve(G_ebv) %*% desiredGain
+```
+
+```{r}
+nSel <- 5
+opt <- optim(
+  par     = b_ebv,
+  fn      = gainDiff,
+  ebvMat  = ebvMat,
+  dGain   = desiredGain,
+  nSel    = nSel
+)
+(opt_weights <- opt$par)
+```
+
+```{r}
+DesireIndex <- ebvMat %*% opt_weights
+DesireIndex <- data.frame(
+  GEN = rownames(ebvMat),
+  DesireIndex = as.numeric(DesireIndex)) |>
+  arrange(desc(DesireIndex))
+head(DesireIndex, 10)
+```
+
+```{r, eval=FALSE}
+write.xlsx(DesireIndex, "Desireindex.xlsx")
+```
+
+```{r}
+(selected <- DesireIndex[1:5, ])
+```
+
+```{r}
+sel_mat <- ebvMat[selected$GEN, ]
+
+expResp <- colMeans(sel_mat) - colMeans(ebvMat)
+scaleExpResp <- expResp / sqrt(sum(expResp^2))
+
+df_vect = cbind(
+  Desired  = desiredGain,
+  Achieved = scaleExpResp)
+```
+
+```{r, eval=FALSE, echo=FALSE, message= FALSE, warning= FALSE}
+ggplot(df_vect, aes(x = Desired, y = Achieved)) +
+  geom_point(size = 3, color = "purple") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_text(aes(label = ""), nudge_x = 0.05, size = 5, color = "orange") +
+  coord_equal(xlim = c(-1,1), ylim = c(-1,1)) +
+  labs(
+    x = "Desired Gain",
+    y = "Achieved Gain"
+  ) +
+  theme_classic(base_size = 14)
+```
+
+```{r}
+library(dplyr)
+df <- dplyr::arrange(DesireIndex, dplyr::desc(DesireIndex)) |>
+  dplyr::mutate(
+    GEN = factor(GEN, levels = GEN),
+    Selected = ifelse(GEN %in% selected$GEN, "Selected", "Not selected"))
+```
+
+```{r, message= FALSE, warning= FALSE}
+library(ggplot2)
+
+desiredgainplot = ggplot(df, aes(x = GEN, y = DesireIndex, fill = Selected)) +
+  geom_col(width = 0.9, color = "black", size = 0.2) + 
+  coord_polar() +
+  scale_fill_manual(
+    values = c(
+      "Selected"     = "#6A1B9A",
+      "Not selected" = "orange")) +
+  labs(face = "bold",
+    fill  = NULL) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(face = "bold"),
+    axis.title = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "bottom")
+```
+
+```{r, eval=FALSE}
+ggsave("desiredgainplot_LB.pdf", plot = desiredgainplot,width = 10, height = 8,dpi = 600)
+```
+
+```{r}
+h2_df <- gmd(mixedmodel, "h2")
+h2 <- h2_df$h2
+names(h2) <- h2_df$VAR
+traits_DI <- colnames(ebvMat)
+h2_DI <- h2[traits_DI]
+library(dplyr)
+
+genetic_gain_table <- function(ebvMat, selected_gen, h2){
+
+  traits <- colnames(ebvMat)
+
+  res <- lapply(traits, function(tr){
+
+    Xo <- mean(ebvMat[, tr], na.rm = TRUE)
+    Xs <- mean(ebvMat[selected_gen, tr], na.rm = TRUE)
+
+    SD  <- Xs - Xo
+    SDp <- (SD / Xo) * 100
+
+    SG  <- SD * h2[tr]
+    SGp <- (SG / Xo) * 100
+
+    tibble(
+      Trait    = tr,
+      `h²` = round(h2[tr], 2),
+      Xo       = round(Xo, 2),
+      Xs       = round(Xs, 2),
+      SD       = round(SD, 2),
+      `SD (%)` = round(SDp, 2),
+      SG       = round(SG, 2),
+      `SG (%)` = round(SGp, 2)
+    )
+  })
+
+  bind_rows(res)
+}
+Table3_DesireIndex <- genetic_gain_table(
+  ebvMat = ebvMat,
+  selected_gen = selected$GEN,
+  h2 = h2_DI)
+```
+
+```{r}
+h2_cullis <- Cullis_all$Cullis_H2
+names(h2_cullis) <- Cullis_all$Trait
+h2_cullis
+Table3_DesireIndex_Cullis <- genetic_gain_table(
+  ebvMat = ebvMat,
+  selected_gen = selected$GEN,
+  h2 = h2_cullis)
+Table3_DesireIndex_Cullis
+```
+
+```{r}
+Table_Broad <- genetic_gain_table(
+  ebvMat,
+  selected$GEN,
+  h2_DI) %>%
+  dplyr::rename(
+    H2_Broad = `h²`,
+    SG_Broad = SG,
+    `SG_Broad (%)` = `SG (%)`)
+
+Table_Cullis <- genetic_gain_table(
+  ebvMat,
+  selected$GEN,
+  h2_cullis) %>%
+  dplyr::rename(
+    H2_Cullis = `h²`,
+    SG_Cullis = SG,
+    `SG_Cullis (%)` = `SG (%)`)
+
+CompareGain <- Table_Broad %>%
+  dplyr::select(Trait, H2_Broad, SG_Broad, `SG_Broad (%)`) %>%
+  left_join(
+    Table_Cullis %>%
+      dplyr::select(Trait, H2_Cullis, SG_Cullis, `SG_Cullis (%)`),
+    by = "Trait")
+CompareGain
+```
+
+```{r}
+library(knitr)
+tableDesire =kable(Table3_DesireIndex)
+```
+
+```{r, eval=FALSE}
+write.xlsx(Table3_DesireIndex, "Table3_DesireIndex.xlsx", rowNames = FALSE)
+```
+
+### Populations
+
+```{r}
+library(tibble)
+populations <- tribble(
+  ~Population, ~Cross, ~Male_origin, ~Female_origin, ~Derived_lines,
+  "H25", "G25236 × BGP UFPI 628",
+  "Buenos Aires, Argentina (CIAT)",
+  "Piauí, Brazil (BGP-UFPI)",
+  "L01–L16",
+
+  "H46", "UC HASKELL × BGP UFPI 728",
+  "California, USA (UC Davis)",
+  "Piauí, Brazil (BGP-UFPI)",
+  "L17–L30",
+
+  "H50", "BGP UFPI 728 × BGP UFPI 628",
+  "Piauí, Brazil (BGP-UFPI)",
+  "Piauí, Brazil (BGP-UFPI)",
+  "L31–L34",
+
+  "H81", "BGP UFPI 628 × UC 92",
+  "Piauí, Brazil (BGP-UFPI)",
+  "California, USA (UC Davis)",
+  "L35–L37",
+
+  "H94", "BGP UFPI 728 × UC 92",
+  "Piauí, Brazil (BGP-UFPI)",
+  "California, USA (UC Davis)",
+  "L38–L40")
+populations
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+pop_lines <- populations %>%
+  rowwise() %>%
+  dplyr::mutate(
+    GEN = list(
+      sprintf(
+        "L%02d",
+        seq(
+          as.numeric(str_extract(Derived_lines, "(?<=L)\\d+")),
+          as.numeric(str_extract(Derived_lines, "(?<=–L)\\d+"))
+        )
+      )
+    )
+  ) %>%
+  unnest(GEN) %>%
+  ungroup()
+```
+
+```{r}
+DesireIndex_pop <- DesireIndex %>%
+  left_join(
+    pop_lines %>%
+      dplyr::select(GEN, Population, Cross, Derived_lines),
+    by = "GEN")
+```
+
+```{r}
+pop_summary <- DesireIndex_pop %>%
+  group_by(Population, Cross) %>%
+  summarise(
+    Mean_DI = mean(DesireIndex),
+    .groups = "drop")
+
+ggplot(
+  pop_summary,
+  aes(
+    x = reorder(Population, Mean_DI),
+    y = Mean_DI,
+    fill = Population)) +
+  geom_col() +
+  coord_flip() +
+  theme_minimal(base_size = 14)
+```
+
+```{r}
+top5 <- selected$GEN
+DesireIndex_pop <- DesireIndex_pop %>%
+  dplyr::mutate(
+    Elite = ifelse(GEN %in% top5, "Selected", "Not Selected"))
+```
+
+```{r,fig.width=14, fig.height=16, message= FALSE, warning= FALSE}
+library(ggplot2)
+library(ggrepel)
+
+DGIPLOT = ggplot(
+  DesireIndex_pop,
+  aes(
+    x = Population,
+    y = DesireIndex
+  )
+) +
+
+  geom_boxplot(
+    aes(fill = Cross),
+    width = 0.9,
+    alpha = 0.13,
+    linewidth = 0.5,
+    outlier.shape = NA
+  ) +
+
+  # Points
+  geom_jitter(
+    aes(
+      color = Elite,
+      shape = Elite),
+    width = 0.15,
+    size = 3,
+    alpha = 0.8) +
+  # Labels for non-selected lines
+  geom_text_repel(
+    data = subset(DesireIndex_pop, Elite == "Not Selected"),
+    aes(label = GEN),
+    size = 4,
+    fontface = "bold",
+    alpha = 0.75,
+    color = "black",
+    max.overlaps = Inf,
+    box.padding = 0,
+    point.padding = 1,
+    segment.alpha = 0) +
+  # Labels for selected lines
+  geom_text_repel(
+    data = subset(DesireIndex_pop, Elite == "Selected"),
+    aes(label = GEN),
+    size = 6,
+    fontface = "bold",
+    alpha = 0.75,
+    color = "purple",
+    max.overlaps = Inf,
+    box.padding = 0.3,
+    point.padding = 1,
+    segment.alpha = 0) +
+  scale_shape_manual(
+    values = c(
+      "Not Selected" = 20,
+      "Selected" = 20
+    ),
+  guide = "none") +
+  scale_color_manual(
+    values = c(
+      "Not Selected" = "black",
+      "Selected" = "purple"),
+  guide = "none")  +
+  scale_fill_manual(
+  values = c(
+    "G25236 × BGP UFPI 628"       = "#FF5E66",
+    "UC HASKELL × BGP UFPI 728"   = "#FFF75E",
+    "BGP UFPI 728 × BGP UFPI 628" = "#5EB7FF",
+    "BGP UFPI 628 × UC 92"        = "#66FF5E",
+    "BGP UFPI 728 × UC 92"        = "#FF5EB7"
+  ),
+  name = "Cross" )+
+  labs(
+    x = "Population",
+    y = "Desire Gain Index",
+    color = NULL,
+    shape = NULL) +
+  theme_classic(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(
+      colour = "black",
+      linewidth = 1),
+    axis.title.x = element_text(
+      face = "bold",
+      size = 14),
+    axis.title.y = element_text(
+      face = "bold",
+      size = 14),
+    axis.text.x = element_text(
+      face = "bold",
+      size = 12),
+    axis.text.y = element_text(
+      face = "bold",
+      size = 12),
+    legend.text = element_text(
+      face = "bold",
+      size = 6),
+    legend.position = c(0.55, 0.18)
+  )
+DGIPLOT
+```
+
+## Genotype by trait (GT) biplot
+
+```{r, eval=FALSE, echo=FALSE}
+gtb1 = gtb(LB, GEN, resp = c(NDF, NDM, PH, PN, GY, OHSW))
+gtb1plot <- plot(
+  gtb1,
+  col.env = "orange",
+  col.gen = "purple",
+  size.text.gen = 4,
+  size.text.env = 4,
+  repel = TRUE,
+  repulsion = 4,
+  alpha = 0.5,
+  col.line = "orange",
+  print.sub = FALSE,
+  plot_theme = theme_bw(base_size = 14) +
+    theme(
+      plot.title = element_blank(),
+      plot.subtitle = element_blank(),
+      panel.grid = element_blank(),
+      legend.position = c(0.85, 0.2),
+      legend.title = element_blank())) +
+  annotate(
+    "text",
+    x = Inf, y = -Inf,
+    label = "Scaling = 1, Centering = 2, SVP = 2",
+    hjust = 1.1,
+    vjust = -0.8,
+    fontface = "bold",
+    size = 3)
+```
+
+```{r, message= FALSE, warning= FALSE}
+library(ggplot2)
+gtb1 <- gtb(
+  LB,
+  GEN,
+  resp = c(NDF, NDM, PH, PN, GY, OHSW))
+gtb1plot <- plot(
+  gtb1,
+  col.env = "orange",
+  col.gen = "purple",
+  size.text.gen = 4,
+  size.text.env = 4,
+  repel = TRUE,
+  repulsion = 4,
+  col.line = "darkorange",
+  print.sub = FALSE,
+  plot_theme = theme_bw(base_size = 14) +
+    theme(
+      plot.title = element_blank(),
+      plot.subtitle = element_blank(),
+      panel.grid = element_blank(),
+      legend.position = c(0.85, 0.2),
+      legend.title = element_blank()))
+gtb1plot$layers[[5]]$aes_params$alpha <- 0.4
+gtb1plot$layers[[5]]$aes_params$size  <- 3
+gtb1plot <- gtb1plot +
+  annotate(
+    "text",
+    x = Inf,
+    y = -Inf,
+    label = "Scaling = 1, Centering = 2, SVP = 2",
+    hjust = 1.1,
+    vjust = -0.8,
+    fontface = "bold",
+    size = 3
+  )
+```
+
+#### Arrange
+
+```{r,fig.width=12, fig.height=12, message= FALSE, warning= FALSE}
+gt_desired_panel <- ggarrange(gtb1plot, desiredgainplot,
+  ncol = 2,
+  common.legend = F, legend = "bottom",
+  labels = c("A","B"),
+  font.label = list(size = 10, face = "bold"), 
+  align = "hv",
+  hjust = -0.5,
+  vjust = 1.5
+)
+gt_desired_panel
+```
+
+```{r, eval=FALSE}
+ggsave("gt_desired_panel_LB.pdf", plot = gt_desired_panel, dpi = 600)
+```
+
+## Selection shift plot
+
+```{r, message= FALSE, warning= FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggridges)
+trait_names <- c(
+  GY_BLUP   = "GY (kg/ha)",
+  OHSW_BLUP = "OHSW (g)",
+  PN_BLUP  = "PN (Number)",
+  PH_BLUP  = "PH (cm)",
+  NDF_BLUP   = "NDF (days)",
+  NDM_BLUP   = "NDM (days)")
+df_long <- bind_rows(
+  lapply(names(BLUPgen), function(tr) {
+  
+    BLUPgen[[tr]] %>%
+      dplyr::mutate(
+        Trait  = trait_names[[tr]],
+        Status = ifelse(
+          GEN %in% selected$GEN,
+          "Selected",
+          "Not Selected")) %>%
+      dplyr::select(
+        GEN,
+        Trait,
+        Status,
+        Predicted)
+  }))
+```
+
+```{r, fig.width=8, fig.height=8, message= FALSE, warning= FALSE}
+library(ggplot2)
+library(dplyr)
+library()
+df_long$Trait <- factor(
+  df_long$Trait,
+  levels = c(
+    "GY (kg/ha)",
+    "OHSW (g)",
+    "PN (Number)",
+    "PH (cm)",
+    "NDF (days)",
+    "NDM (days)"
+  )
+)
+# Cullis heritability table
+h2_df <- data.frame(
+  Trait = c(
+    "GY (kg/ha)",
+    "OHSW (g)",
+    "PN (Number)",
+    "PH (cm)",
+    "NDF (days)",
+    "NDM (days)"
+  ),
+  H2 = c(
+    0.303,
+    0.754,
+    0.281,
+    0.528,
+    0.752,
+    0.403))
+
+h2_df$Trait <- factor(
+  h2_df$Trait,
+  levels = levels(df_long$Trait))
+# Plot
+SelectionShiftPlot <- ggplot(
+  df_long,
+  aes(
+    x = Status,
+    y = Predicted,
+    fill = Status)) +
+  # Violin
+  geom_violin(
+    alpha = 0.25,
+    color = "black",
+    linewidth = 1.2,
+    trim = FALSE) +
+  # Boxplot
+  geom_boxplot(
+    width = 0.12,
+    alpha = 0.3,
+    linewidth = 0.6,
+    outlier.shape = NA) +
+  # Individual genotypes
+  geom_jitter(
+    width = 0.08,
+    size = 1.5,
+    alpha = 0.45,
+    color = "black") +
+  # Mean
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 23,
+    size = 3,
+    fill = "white",
+    color = "black",
+    stroke = 1) +
+  facet_wrap(
+    ~Trait,
+    scales = "free_y",
+    ncol = 2, nrow = 3) +
+  # Heritability annotation
+  geom_text(
+    data = h2_df,
+    aes(
+      x = 1.5,
+      y = Inf,
+      label = paste0(
+        "H[Cullis]^2==",
+        sprintf("%.3f", H2))),
+    inherit.aes = FALSE,
+    parse = TRUE,
+    fontface = "bold",
+    size = 4,
+    vjust = 1.5) +
+  scale_fill_manual(
+    values = c(
+      "Not Selected" = "orange",
+      "Selected" = "purple")) +
+  labs(
+    x = NULL,
+    y = "Predicted",
+    fill = NULL) +
+  ggdist::theme_ggdist(base_size = 14) +
+  theme(
+    panel.grid = element_blank(),
+    strip.background = element_rect(
+      fill = "grey95",
+      colour = "black",
+      linewidth = 0.5),
+    strip.text = element_text(
+      face = "bold",
+      size = 12),
+    axis.title.y = element_text(
+      face = "bold",
+      size = 13),
+    axis.text.x = element_text(
+      face = "bold",
+      size = 11),
+    axis.text.y = element_text(
+      face = "bold",
+      size = 11),
+    legend.position = "none",
+    legend.text = element_text(
+      face = "bold",
+      size = 11),
+    panel.spacing = unit(1.2, "lines"))
+SelectionShiftPlot
+```
+
+```{r, eval=FALSE}
+ggsave("SelectionShiftPlot.pdf", plot = SelectionShiftPlot, 
+       width = 8,
+       height = 8,
+       dpi = 600)
+```
+
+## Density plot
+
+```{r, eval=FALSE, echo=FALSE, message= FALSE, warning= FALSE}
+BLUPgen=readxl::read_xlsx("BLUPgen_LB.xlsx",)
+str(BLUPgen)
+all_sheets <- readxl::excel_sheets("BLUPgen_LB.xlsx")
+BLUPgen <- purrr::map(purrr::set_names(all_sheets),
+                   readxl::read_excel,
+                   path = "BLUPgen_LB.xlsx")
+
+
+DesireIndex <- readxl::read_xlsx("Desireindex.xlsx")
+
+selected <- DesireIndex[1:5, ]
+```
+
+```{r, eval=FALSE, echo=FALSE}
+Cullis_H2 <- c(
+  GY   = 0.303,
+  OHSW = 0.754,
+  NDF  = 0.752,
+  NDM  = 0.403,
+  PH   = 0.528,
+  PN   = 0.281
+)
+plot_density_SG <- function(data_trait,
+                            selected,
+                            xlab,
+                            h2){
+
+  df <- as.data.frame(data_trait)
+
+  df$Status <- factor(
+    ifelse(
+      df$GEN %in% selected$GEN,
+      "Selected",
+      "Not Selected"
+    ),
+    levels = c("Not Selected","Selected")
+  )
+
+  xmax <- max(df$Predicted, na.rm = TRUE)
+
+  ggplot(df,
+         aes(x = Predicted,
+             fill = Status)) +
+
+    geom_density(
+      alpha = 0.6,
+      color = "black",
+      linewidth = 0.4,
+      adjust = 5
+    ) +
+
+  annotate(
+  "text",
+  x = xmax,
+  y = Inf,
+  label = paste0(
+    "H[Cullis]^2==",
+    h2
+  ),
+  parse = TRUE,
+  hjust = 1.1,
+  vjust = 1.5,
+  fontface = "bold",
+  size = 4.5
+) +
+    scale_fill_manual(
+      values = c(
+        "Not Selected" = "#FFE5B4",
+        "Selected"     = "#BFB4FF")) +
+    labs(
+      x = xlab,
+      y = "Density",
+      fill = NULL
+    ) +
+    theme_bw(base_size = 12) +
+    theme(
+      axis.title.x = element_text(face = "bold"),
+      axis.title.y = element_text(face = "bold"),
+      legend.position = "bottom")
+}
+library(patchwork)
+pd1 <- plot_density_SG(
+  BLUPgen$GY_BLUP,
+  selected,
+  expression(bold("GY (kg ha"^{-1}*")")),
+  Cullis_H2["GY"])
+
+pd2 <- plot_density_SG(
+  BLUPgen$OHSW_BLUP,
+  selected,
+  expression(bold("OHSW (g)")),
+  Cullis_H2["OHSW"])
+
+pd3 <- plot_density_SG(
+  BLUPgen$NDF_BLUP,
+  selected,
+  expression(bold("NDF (days)")),
+  Cullis_H2["NDF"])
+
+pd4 <- plot_density_SG(
+  BLUPgen$NDM_BLUP,
+  selected,
+  expression(bold("NDM (days)")),
+  Cullis_H2["NDM"])
+
+pd5 <- plot_density_SG(
+  BLUPgen$PH_BLUP,
+  selected,
+  expression(bold("PH (cm)")),
+  Cullis_H2["PH"])
+
+pd6 <- plot_density_SG(
+  BLUPgen$PN_BLUP,
+  selected,
+  expression(bold("PN (Number)")),
+  Cullis_H2["PN"])
+densplot <-
+  (pd1 + pd2 + pd3) /
+  (pd4 + pd5 + pd6) +
+  plot_annotation(
+    tag_levels = "A",
+    theme = theme(
+      plot.tag = element_text(
+        face = "bold",
+        size = 14))) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+```
+
+```{r, eval=FALSE}
+ggsave(plot = densplot, "densplot.pdf", width = 14, height = 8, dpi = 600)
+```
+
+## Environmental Similarity
+
+```{r, message=FALSE, warning=FALSE, message= FALSE, warning= FALSE}
+library(EnvRtype)
+library(terra)
+library(raster)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+
+# ENVIRONMENTS
+env.i <- c(
+  "Piracicaba (SP)",
+  "Teresina (PI)",
+  "Tianguá (CE)"
+)
+
+lat <- c(-22.708333, -5.093889, -3.732222)
+lon <- c(-47.636667, -42.784722, -41.012222)
+
+plant.date <- c("2024-12-19", "2023-03-14", "2023-02-14")
+harv.date  <- c("2025-04-15", "2023-07-14", "2023-06-14")
+
+# WEATHER DATA
+df.clim <- get_weather(
+  env.id = env.i,
+  lat = lat,
+  lon = lon,
+  start.day = plant.date,
+  end.day = harv.date
+)
+
+# CLIMATE COVARIATES
+var.clim <- c("T2M", "VPD", "PRECTOT", "GWETTOP")
+
+df.clim$DATE <- as.Date(as.character(df.clim$YYYYMMDD), format = "%Y%m%d")
+df.clim$YEAR <- as.numeric(format(df.clim$DATE, "%Y"))
+df.clim$MM   <- as.numeric(format(df.clim$DATE, "%m"))
+df.clim$DD   <- as.numeric(format(df.clim$DATE, "%d"))
+
+EC <- W_matrix(
+  env.data = df.clim,
+  env.id = "env",
+  var.id = var.clim,
+  statistic = "mean"
+)
+
+EC <- data.frame(env = rownames(EC), EC, row.names = NULL)
+
+# SOIL RASTER
+soilraster <- raster(
+  "C:/Users/joaop/Documents/GitHub/Kenya Maps/KenyaMaps/Soil_Raster/hwsd_domi.tif"
+)
+
+coords <- data.frame(env = env.i, lon = lon, lat = lat)
+
+soil_values <- extract(soilraster, coords[, c("lon", "lat")])
+
+soil_class <- data.frame(env = env.i, soil_class = soil_values)
+
+soil_class_names <- data.frame(
+  soil_class = c(1, 10),
+  class_name = c("Lixisol", "Regosol")
+)
+
+soil_class <- left_join(soil_class, soil_class_names, by = "soil_class")
+
+# MERGE CLIMATE + SOIL
+EC_soil <- left_join(
+  EC,
+  soil_class[, c("env", "class_name")],
+  by = "env"
+)
+
+# DUMMY VARIABLES (FIXED)
+soil_dummy <- model.matrix(~ class_name - 1, data = EC_soil)
+soil_dummy <- as.data.frame(soil_dummy)
+
+# FINAL MATRIX
+EC_final <- cbind(
+  EC_soil %>% dplyr::select(-class_name),
+  soil_dummy
+)
+
+EC_numeric <- EC_final %>% dplyr::select(where(is.numeric))
+EC_numeric <- as.matrix(EC_numeric)
+
+rownames(EC_numeric) <- EC_final$env
+
+# IMPUTE NA
+for (i in 1:ncol(EC_numeric)) {
+  EC_numeric[is.na(EC_numeric[, i]), i] <- mean(EC_numeric[, i], na.rm = TRUE)
+}
+
+# ENVIRONMENTAL KERNEL
+K_E <- env_kernel(env.data = EC_numeric)[[2]]
+
+# HEATMAP DATA
+K_df <- melt(K_E)
+
+colnames(K_df) <- c("Env1", "Env2", "Similarity")
+
+K_df <- K_df %>%
+  dplyr::mutate(
+    Env1 = factor(Env1, levels = rownames(K_E)),
+    Env2 = factor(Env2, levels = colnames(K_E))
+  ) %>%
+  filter(as.numeric(Env1) >= as.numeric(Env2))
+
+# PLOT
+envsim <- ggplot(K_df, aes(Env1, Env2, fill = Similarity)) +
+
+  geom_tile(color = "white", linewidth = 0.5) +
+
+  scale_fill_gradientn(
+    colors = c("purple", "#b2abd2", "#f7f7f7", "#fdb863", "orange"),
+    name = "Environmental Similarity"
+  ) +
+
+  coord_equal() +
+
+  theme_minimal(base_size = 16) +
+
+  theme(
+    panel.grid = element_blank(),
+
+    axis.text.x = element_text(face = "bold", size = 12),
+    axis.text.y = element_text(face = "bold", size = 12),
+
+    axis.title = element_blank(),
+
+    plot.title = element_text(
+      face = "bold",
+      hjust = 0.5,
+      size = 18
+    ),
+
+    legend.position = "bottom",
+
+    legend.title = element_text(face = "bold", size = 12),
+    legend.text = element_text(face = "bold", size = 10)
+  )
+```
+
+```{r, message= FALSE, warning= FALSE}
+library(igraph)
+library(ggraph)
+library(ggplot2)
+env_df <- data.frame(
+  env = c(
+    "Piracicaba",
+    "Teresina",
+    "Tianguá"
+  ),
+  x = c(0, 1, 0.5),
+  y = c(0, 0, 0.9)
+)
+
+envsim2 = ggplot(env_df, aes(x, y)) +
+
+  # triangle
+  geom_polygon(
+    fill = "#F7F7F7",
+    color = "grey40",
+    linewidth = 1.2,
+    alpha = 0.5
+  ) +
+
+  # environment points
+  geom_point(
+    aes(fill = env),
+    shape = 21,
+    size = 20,
+    color = "black",
+    stroke = 0
+  ) +
+
+  # environment labels
+  geom_text(
+    aes(label = env),
+    fontface = "bold",
+    size = 5,
+    nudge_y = 0,
+    nudge_x = 0
+  ) +
+
+  # similarity values
+  annotate(
+    "text",
+    x = 0.5,
+    y = 0.05,
+    label = round(K_E[1,2], 2),
+    size = 5,
+    fontface = "bold"
+  ) +
+
+  annotate(
+    "text",
+    x = 0.25,
+    y = 0.45,
+    label = round(K_E[1,3], 2),
+    size = 5,
+    fontface = "bold"
+  ) +
+
+  annotate(
+    "text",
+    x = 0.75,
+    y = 0.45,
+    label = round(K_E[2,3], 2),
+    size = 5,
+    fontface = "bold") +
+
+  scale_fill_manual(
+    values = c(
+      "Piracicaba" = "purple",
+      "Teresina"   = "orange",
+      "Tianguá"    = "lightpink")) +
+
+  coord_equal() +
+  theme_void() +
+  theme(
+    legend.position = "none"
+  )
+envsim2
+```
+
+```{r, eval=FALSE}
+ggsave("envsim2.pdf", plot = envsim2, 
+       width = 8,
+       height = 8,
+       dpi = 600)
+```
